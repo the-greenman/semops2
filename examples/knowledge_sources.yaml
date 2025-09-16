@@ -1,0 +1,491 @@
+# SemOps2 Knowledge Source Types Configuration
+# Defines how different types of knowledge sources are processed and stored
+
+source_types:
+  # Traditional Web Content
+  web_content:
+    name: "Web Content"
+    description: "HTML pages, articles, documentation sites"
+    icon: "🌐"
+    category: "external"
+
+    # Processing Pipeline Configuration
+    pipeline:
+      extractor:
+        component: "extractors.WebHTMLExtractor"
+        config:
+          remove_navigation: true
+          extract_main_content: true
+          preserve_links: true
+          follow_redirects: true
+          timeout: 30
+
+      processor:
+        component: "processors.MarkdownConverter"
+        config:
+          preserve_formatting: true
+          extract_headings: true
+          clean_html: true
+
+      chunker:
+        component: "chunkers.SemanticChunker"
+        config:
+          chunk_size: 1000
+          overlap: 100
+          respect_boundaries: ["sentence", "paragraph", "section"]
+
+      enrichers:
+        - component: "enrichers.MetadataEnricher"
+          config:
+            extract_timestamps: true
+            extract_authors: true
+            extract_keywords: true
+        - component: "enrichers.LinkEnricher"
+          config:
+            resolve_internal_links: true
+
+    # Storage Strategy
+    storage:
+      primary: "vector_store"
+      secondary: ["graph_store"]  # For link relationships
+
+    # Supported Protocols and Formats
+    protocols: ["http", "https"]
+    mime_types: ["text/html", "application/xhtml+xml"]
+
+    # Quality and Filtering
+    content_filters:
+      min_content_length: 100
+      exclude_patterns: ["404", "access denied", "login required"]
+      language_detection: true
+
+  # Enhanced Document Processing
+  documents:
+    name: "Documents"
+    description: "PDFs, Word docs, presentations, spreadsheets"
+    icon: "📄"
+    category: "external"
+
+    pipeline:
+      extractor:
+        component: "extractors.DocumentExtractor"
+        config:
+          extract_text: true
+          extract_images: true
+          extract_tables: true
+          preserve_structure: true
+          ocr_enabled: true  # For scanned documents
+
+      processor:
+        component: "processors.DocumentProcessor"
+        config:
+          normalize_whitespace: true
+          extract_outline: true
+          detect_sections: true
+
+      chunker:
+        component: "chunkers.DocumentAwareChunker"
+        config:
+          chunk_by_section: true
+          preserve_tables: true
+          chunk_size: 1500  # Larger chunks for documents
+          overlap: 200
+
+      enrichers:
+        - component: "enrichers.DocumentStructureEnricher"
+          config:
+            extract_headings: true
+            extract_page_numbers: true
+            extract_footnotes: true
+
+    storage:
+      primary: "vector_store"
+      secondary: ["document_graph"]  # Document structure relationships
+
+    protocols: ["file", "http", "https"]
+    mime_types:
+      - "application/pdf"
+      - "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      - "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+      - "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+  # API Data Sources
+  api_feeds:
+    name: "API Data Feeds"
+    description: "REST APIs, GraphQL endpoints, structured data services"
+    icon: "🔌"
+    category: "external"
+
+    pipeline:
+      extractor:
+        component: "extractors.APIExtractor"
+        config:
+          rate_limit: 10  # requests per second
+          timeout: 30
+          retry_policy: "exponential_backoff"
+          pagination_support: true
+
+      processor:
+        component: "processors.JSONProcessor"
+        config:
+          flatten_nested: true
+          extract_schemas: true
+          validate_data: true
+
+      structurer:
+        component: "structurers.SchemaMapper"
+        config:
+          auto_detect_schema: true
+          validate_relationships: true
+
+      chunker:
+        component: "chunkers.DataChunker"
+        config:
+          chunk_by_entity: true
+          preserve_relationships: true
+
+    storage:
+      primary: "graph_store"  # APIs have rich structured relationships
+      secondary: ["vector_store"]  # For text descriptions
+
+    protocols: ["rest", "graphql", "websocket", "grpc"]
+    authentication:
+      - "bearer_token"
+      - "api_key"
+      - "oauth2"
+      - "basic_auth"
+
+    options:
+      poll_interval: 3600  # seconds for periodic updates
+      real_time: false
+      schema_validation: true
+      rate_limiting: true
+
+  # Code Repository Analysis
+  code_repos:
+    name: "Code Repositories"
+    description: "GitHub repos, GitLab projects, code documentation"
+    icon: "💻"
+    category: "external"
+
+    pipeline:
+      extractor:
+        component: "extractors.GitExtractor"
+        config:
+          clone_depth: 1  # Shallow clone
+          exclude_paths: [".git", "node_modules", "__pycache__"]
+          include_history: false  # Set true for commit analysis
+
+      processor:
+        component: "processors.CodeProcessor"
+        config:
+          syntax_highlighting: false
+          extract_functions: true
+          extract_classes: true
+          extract_comments: true
+          extract_docstrings: true
+
+      chunker:
+        component: "chunkers.CodeAwareChunker"
+        config:
+          chunk_by: "function"  # function, class, file
+          include_context: true
+          preserve_imports: true
+
+      enrichers:
+        - component: "enrichers.ASTEnricher"
+          config:
+            extract_dependencies: true
+            extract_function_signatures: true
+            extract_type_annotations: true
+        - component: "enrichers.CodeMetricsEnricher"
+          config:
+            complexity_analysis: true
+            extract_patterns: true
+
+    storage:
+      primary: "graph_store"  # Code has rich dependency relationships
+      secondary: ["vector_store"]  # For documentation and comments
+
+    protocols: ["git", "github", "gitlab", "bitbucket"]
+    languages: ["python", "javascript", "typescript", "go", "rust", "java", "csharp"]
+
+  # Knowledge Graphs and Ontologies
+  knowledge_graphs:
+    name: "Knowledge Graphs"
+    description: "RDF data, ontologies, structured knowledge bases"
+    icon: "🕸️"
+    category: "external"
+
+    pipeline:
+      extractor:
+        component: "extractors.RDFExtractor"
+        config:
+          parse_formats: ["turtle", "json-ld", "rdf-xml", "n-triples"]
+          validate_syntax: true
+
+      processor:
+        component: "processors.GraphProcessor"
+        config:
+          normalize_uris: true
+          resolve_prefixes: true
+          extract_labels: true
+
+      mapper:
+        component: "mappers.OntologyMapper"
+        config:
+          map_to_schema: true
+          detect_patterns: true
+
+    storage:
+      primary: "graph_store"  # Native graph storage
+      secondary: []
+
+    protocols: ["sparql", "rdf", "owl", "file"]
+    formats: ["turtle", "json-ld", "rdf-xml", "n-triples", "n-quads"]
+
+  # Multi-Modal Media Content
+  media_content:
+    name: "Media Content"
+    description: "Images, videos, audio with AI-powered analysis"
+    icon: "🎬"
+    category: "external"
+
+    pipeline:
+      extractor:
+        component: "extractors.MediaExtractor"
+        config:
+          extract_metadata: true
+          generate_thumbnails: true
+          extract_embedded_text: true
+
+      processor:
+        component: "processors.MultiModalProcessor"
+        config:
+          vision_model: "clip-vit-base-patch32"  # For image analysis
+          audio_model: "whisper-base"  # For audio transcription
+          video_sampling_rate: 1  # frames per second
+
+      chunker:
+        component: "chunkers.TemporalChunker"
+        config:
+          chunk_by_scene: true  # For videos
+          time_based_chunks: true
+          preserve_sequences: true
+
+      enrichers:
+        - component: "enrichers.VisionEnricher"
+          config:
+            object_detection: true
+            scene_description: true
+            text_extraction: true  # OCR
+        - component: "enrichers.AudioEnricher"
+          config:
+            speech_to_text: true
+            speaker_identification: false
+            sentiment_analysis: true
+
+    storage:
+      primary: "multimodal_store"  # CLIP embeddings for cross-modal search
+      secondary: ["vector_store"]  # Text descriptions and transcripts
+
+    protocols: ["http", "https", "file"]
+    mime_types:
+      - "image/*"
+      - "video/*"
+      - "audio/*"
+
+    options:
+      max_file_size: "100MB"
+      thumbnail_size: [224, 224]
+      video_quality: "720p"
+
+  # Enhanced Internal Knowledge
+  internal_knowledge:
+    name: "Internal Knowledge"
+    description: "Meeting notes, decisions, organizational knowledge"
+    icon: "🏢"
+    category: "internal"
+
+    pipeline:
+      extractor:
+        component: "extractors.InternalFileExtractor"
+        config:
+          supported_formats: ["md", "txt", "docx", "pdf"]
+          extract_metadata: true
+          preserve_structure: true
+
+      processor:
+        component: "processors.InternalProcessor"
+        config:
+          detect_meeting_notes: true
+          extract_decisions: true
+          identify_action_items: true
+          extract_people: true
+
+      chunker:
+        component: "chunkers.TopicAwareChunker"
+        config:
+          chunk_by_topic: true
+          preserve_context: true
+          overlap: 150
+
+      enrichers:
+        - component: "enrichers.PeopleEnricher"
+          config:
+            extract_names: true
+            identify_roles: true
+            map_expertise: true
+        - component: "enrichers.DecisionEnricher"
+          config:
+            extract_decisions: true
+            identify_stakeholders: true
+            track_outcomes: true
+        - component: "enrichers.OrganizationalEnricher"
+          config:
+            map_departments: true
+            identify_processes: true
+
+    storage:
+      primary: "vector_store"
+      secondary: ["organizational_graph"]  # People, decisions, processes
+
+    protocols: ["file", "sharepoint", "confluence", "notion", "slack"]
+
+    options:
+      privacy_mode: true
+      anonymize_names: false  # Set true for privacy
+      extract_sensitive_info: false
+
+  # Real-Time Data Feeds
+  realtime_feeds:
+    name: "Real-Time Data Feeds"
+    description: "RSS feeds, news, social media, monitoring data"
+    icon: "📡"
+    category: "external"
+
+    pipeline:
+      extractor:
+        component: "extractors.FeedExtractor"
+        config:
+          poll_interval: 300  # 5 minutes
+          batch_size: 50
+          deduplication: true
+
+      processor:
+        component: "processors.StreamProcessor"
+        config:
+          real_time_analysis: true
+          sentiment_analysis: true
+          trend_detection: true
+          language_detection: true
+
+      chunker:
+        component: "chunkers.TemporalChunker"
+        config:
+          time_window: 3600  # 1 hour chunks
+          overlap: 300  # 5 minutes
+          preserve_timeline: true
+
+      enrichers:
+        - component: "enrichers.TrendEnricher"
+          config:
+            detect_trending_topics: true
+            track_sentiment_changes: true
+            identify_influencers: false
+        - component: "enrichers.TimestampEnricher"
+          config:
+            normalize_timezones: true
+            extract_publish_dates: true
+
+    storage:
+      primary: "time_series_store"  # InfluxDB for temporal data
+      secondary: ["vector_store"]  # For content search
+
+    protocols: ["rss", "atom", "json", "websocket", "sse"]
+
+    options:
+      retention_policy: "30d"  # Keep data for 30 days
+      real_time: true
+      trend_detection: true
+      alert_thresholds: true
+
+  # Enterprise Integrations
+  enterprise_systems:
+    name: "Enterprise Systems"
+    description: "CRM, ERP, ticketing systems, databases"
+    icon: "🏭"
+    category: "internal"
+
+    pipeline:
+      extractor:
+        component: "extractors.EnterpriseExtractor"
+        config:
+          connection_pooling: true
+          incremental_sync: true
+          field_mapping: true
+
+      processor:
+        component: "processors.StructuredDataProcessor"
+        config:
+          normalize_schemas: true
+          handle_relations: true
+          data_validation: true
+
+      chunker:
+        component: "chunkers.RecordChunker"
+        config:
+          chunk_by_record_type: true
+          preserve_relationships: true
+          include_metadata: true
+
+    storage:
+      primary: "graph_store"  # Enterprise data has complex relationships
+      secondary: ["vector_store"]  # For text search in descriptions
+
+    protocols: ["sql", "rest", "soap", "graphql"]
+    integrations:
+      - "salesforce"
+      - "servicenow"
+      - "jira"
+      - "sap"
+      - "oracle"
+      - "dynamics365"
+
+# Global Configuration
+knowledge_repository_config:
+  # Processing Settings
+  processing:
+    max_concurrent_jobs: 4
+    timeout_per_source: 300  # 5 minutes
+    retry_attempts: 3
+    error_recovery: "skip_and_continue"
+
+  # Storage Settings
+  storage:
+    default_vector_backend: "chromadb"
+    default_graph_backend: "networkx"
+    enable_hybrid_search: true
+    cross_modal_search: true
+
+  # Quality Control
+  quality:
+    min_content_length: 50
+    max_content_length: 1000000  # 1MB
+    language_filtering: true
+    duplicate_detection: true
+    content_validation: true
+
+  # Privacy and Security
+  privacy:
+    anonymize_pii: true
+    encrypt_sensitive_content: true
+    access_control: true
+    audit_logging: true
+
+  # Performance
+  performance:
+    cache_embeddings: true
+    batch_processing: true
+    incremental_updates: true
+    compression: true

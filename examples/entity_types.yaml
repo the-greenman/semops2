@@ -1,0 +1,341 @@
+# SemOps2 Entity Type Configuration
+# This file defines all entity types and their relationships, structure, and behavior
+
+entity_types:
+  # Root Level: Strategic Domains
+  domain:
+    # Identity Configuration
+    id_prefix: "DOM"
+    name_field: "domain_name"
+    slug_field: "domain_slug"
+
+    # Template & File Configuration
+    template: "domain.md.j2"
+    directory_name: "domain"
+    filename_pattern: "{entity_type}.md"    # → domain.md for context detection
+
+    # Hierarchy & Nesting Configuration
+    parent_entity: null
+    child_entities: ["problem", "solution", "research"]
+    nesting_strategy: "root"                # Root entity type
+    scoped_to_parent: false
+    context_level: 1
+
+    # Validation Configuration
+    required_fields: ["domain_name", "brief_description"]
+    unique_fields: ["domain_name", "domain_slug"]
+
+    # CLI Configuration
+    list_command: true
+    get_command: true
+    create_command: true
+    analyze_command: true
+
+    # Display Configuration
+    display_name: "Domain"
+    description: "Strategic business areas and market segments"
+    icon: "🏢"
+
+  # Level 2: Market Problems
+  problem:
+    id_prefix: "PROB"
+    name_field: "problem_name"
+    slug_field: "problem_slug"
+    template: "problem.md.j2"
+    directory_name: "problems"
+    filename_pattern: "{entity_type}.md"    # → problem.md for context detection
+
+    # Hierarchy & Nesting Configuration
+    parent_entity: "domain"
+    child_entities: ["persona"]
+    nesting_strategy: "nested_directories"  # Creates problems/{slug}/problem.md
+    scoped_to_parent: true                  # Problem must exist within specific domain
+    context_level: 2
+    required_fields: ["problem_name", "domain_id"]
+    unique_fields: ["problem_name"]
+    list_command: true
+    get_command: true
+    create_command: true
+    analyze_command: true
+    display_name: "Problem"
+    description: "Market challenges and opportunities within domains"
+    icon: "🎯"
+
+  # Level 3: User Personas
+  persona:
+    id_prefix: "PERS"
+    name_field: "persona_name"
+    slug_field: "persona_slug"
+    template: "persona.md.j2"
+    directory_name: "personas"
+    filename_pattern: "{entity_type}.md"    # → persona.md for context detection
+
+    # Hierarchy & Nesting Configuration
+    parent_entity: "problem"
+    child_entities: []
+    nesting_strategy: "nested_directories"  # Creates personas/{slug}/persona.md
+    scoped_to_parent: true                  # Persona scoped to specific problem
+    context_level: 3
+    required_fields: ["persona_name", "problem_id"]
+    unique_fields: ["persona_name"]
+    list_command: true
+    get_command: true
+    create_command: true
+    analyze_command: true
+    display_name: "Persona"
+    description: "User archetypes and target audiences"
+    icon: "👤"
+
+  # Level 4: Product Definitions
+  product:
+    id_prefix: "PROD"
+    name_field: "product_name"
+    slug_field: "product_slug"
+    template: "product.md.j2"
+    directory_name: "products"
+    filename_pattern: "{entity_type}.md"    # → product.md for context detection
+
+    # Hierarchy & Nesting Configuration
+    parent_entity: "persona"
+    child_entities: []
+    nesting_strategy: "nested_directories"  # Creates products/{slug}/product.md
+    scoped_to_parent: true                  # Product scoped to specific persona
+    context_level: 4
+    required_fields: ["product_name", "persona_id"]
+    unique_fields: ["product_name"]
+    list_command: true
+    get_command: true
+    create_command: true
+    analyze_command: true
+    display_name: "Product"
+    description: "Solution definitions and product offerings"
+    icon: "📦"
+
+  # Level 2B: Solution Approaches (NEW - parallel to problems)
+  solution:
+    id_prefix: "SOL"
+    name_field: "solution_name"
+    slug_field: "solution_slug"
+    template: "solution.md.j2"
+    directory_name: "solutions"
+    filename_pattern: "{entity_type}.md"    # → solution.md for context detection
+
+    # Hierarchy & Nesting Configuration
+    parent_entity: "domain"                 # Solutions belong to domains, not products
+    child_entities: ["feature"]
+    nesting_strategy: "nested_directories"  # Creates solutions/{slug}/solution.md
+    scoped_to_parent: true                  # Solution scoped to specific domain
+    context_level: 2
+    required_fields: ["solution_name", "domain_id"]
+    unique_fields: ["solution_name"]
+    list_command: true
+    get_command: true
+    create_command: true
+    analyze_command: true
+    display_name: "Solution"
+    description: "Specific implementation approaches and architectures"
+    icon: "💡"
+
+  # Level 3: Feature Definitions (NEW)
+  feature:
+    id_prefix: "FEAT"
+    name_field: "feature_name"
+    slug_field: "feature_slug"
+    template: "feature.md.j2"
+    directory_name: "features"
+    filename_pattern: "{entity_type}.md"    # → feature.md for context detection
+
+    # Hierarchy & Nesting Configuration
+    parent_entity: "solution"
+    child_entities: []
+    nesting_strategy: "nested_directories"  # Creates features/{slug}/feature.md
+    scoped_to_parent: true                  # Feature scoped to specific solution
+    context_level: 3
+    required_fields: ["feature_name", "solution_id"]
+    unique_fields: ["feature_name"]
+    list_command: true
+    get_command: true
+    create_command: true
+    analyze_command: true
+    display_name: "Feature"
+    description: "Specific capabilities and functional components"
+    icon: "⚡"
+
+  # Alternative Hierarchy: Market Segments (NEW)
+  market_segment:
+    id_prefix: "SEG"
+    name_field: "segment_name"
+    slug_field: "segment_slug"
+    template: "market_segment.md.j2"
+    directory_name: "segments"
+    filename_pattern: "{entity_type}.md"    # → market_segment.md for context detection
+
+    # Hierarchy & Nesting Configuration
+    parent_entity: "domain"
+    child_entities: ["persona"]
+    nesting_strategy: "nested_directories"  # Creates segments/{slug}/market_segment.md
+    scoped_to_parent: true                  # Segment scoped to specific domain
+    context_level: 2
+    required_fields: ["segment_name", "domain_id"]
+    unique_fields: ["segment_name"]
+    list_command: true
+    get_command: true
+    create_command: true
+    analyze_command: true
+    display_name: "Market Segment"
+    description: "Specific market categories and customer groups"
+    icon: "🎪"
+
+  # Cross-Cutting: Integration Points (NEW)
+  integration:
+    id_prefix: "INT"
+    name_field: "integration_name"
+    slug_field: "integration_slug"
+    template: "integration.md.j2"
+    directory_name: "integrations"
+    filename_pattern: "{entity_type}.md"    # → integration.md for context detection
+
+    # Hierarchy & Nesting Configuration
+    parent_entity: null                     # Root level - not hierarchical
+    child_entities: []
+    nesting_strategy: "nested_directories"  # Creates integrations/{slug}/integration.md
+    scoped_to_parent: false                 # Cross-cutting entity
+    context_level: 1
+    required_fields: ["integration_name", "connected_entities"]
+    unique_fields: ["integration_name"]
+    list_command: true
+    get_command: true
+    create_command: true
+    analyze_command: false  # No AI analysis for integrations
+    display_name: "Integration"
+    description: "System integrations and entity relationships"
+    icon: "🔗"
+
+  # Research Artifacts (NEW)
+  research:
+    id_prefix: "RES"
+    name_field: "research_name"
+    slug_field: "research_slug"
+    template: "research.md.j2"
+    directory_name: "research"
+    filename_pattern: "{entity_type}.md"    # → research.md for context detection
+
+    # Hierarchy & Nesting Configuration
+    parent_entity: "domain"                 # Research belongs to domains
+    child_entities: []
+    nesting_strategy: "nested_directories"  # Creates research/{slug}/research.md
+    scoped_to_parent: true                  # Research scoped to specific domain
+    context_level: 2
+    required_fields: ["research_name", "research_type", "domain_id"]
+    unique_fields: ["research_name"]
+    list_command: true
+    get_command: true
+    create_command: true
+    analyze_command: true
+    display_name: "Research"
+    description: "Market research, user studies, and analysis artifacts"
+    icon: "🔬"
+
+  # Strategy Documents (NEW)
+  strategy:
+    id_prefix: "STRAT"
+    name_field: "strategy_name"
+    slug_field: "strategy_slug"
+    template: "strategy.md.j2"
+    directory_name: "strategies"
+    filename_pattern: "{slug}.md"
+    parent_entity: "domain"
+    child_entities: ["initiative"]
+    context_level: 2
+    required_fields: ["strategy_name", "strategic_focus", "domain_id"]
+    unique_fields: ["strategy_name"]
+    list_command: true
+    get_command: true
+    create_command: true
+    analyze_command: true
+    display_name: "Strategy"
+    description: "Strategic initiatives and business strategies"
+    icon: "📈"
+
+  # Strategic Initiatives (NEW)
+  initiative:
+    id_prefix: "INIT"
+    name_field: "initiative_name"
+    slug_field: "initiative_slug"
+    template: "initiative.md.j2"
+    directory_name: "initiatives"
+    filename_pattern: "{slug}.md"
+    parent_entity: "strategy"
+    child_entities: []
+    context_level: 3
+    required_fields: ["initiative_name", "strategy_id"]
+    unique_fields: ["initiative_name"]
+    list_command: true
+    get_command: true
+    create_command: true
+    analyze_command: true
+    display_name: "Initiative"
+    description: "Specific strategic initiatives and action plans"
+    icon: "🚀"
+
+# Global Configuration
+configuration:
+  # Template Processing
+  template_engine:
+    auto_escape: true
+    strict_variables: true
+    trim_blocks: true
+    lstrip_blocks: true
+
+  # Validation Settings
+  validation:
+    enforce_unique_constraints: true
+    validate_parent_relationships: true
+    require_templates: true
+    validate_frontmatter: true
+
+  # Context Detection
+  context_detection:
+    max_parent_search_depth: 10
+    auto_resolve_ambiguity: true
+    prefer_deeper_context: true
+
+  # CLI Settings
+  cli:
+    auto_generate_help: true
+    consistent_parameter_names: true
+    context_aware_defaults: true
+    format_options: ["table", "json", "yaml", "markdown"]
+
+# Template Variable Mapping
+# Defines how entity configuration maps to template variables
+template_variables:
+  # Standard variables available in all templates
+  global:
+    - entity_type
+    - entity_id
+    - entity_name
+    - entity_slug
+    - parent_id
+    - template_id
+    - template_version
+    - creation_date
+    - last_modified
+
+  # Entity-specific variable patterns
+  entity_specific:
+    domain:
+      - domain_id
+      - domain_name
+      - domain_slug
+    problem:
+      - problem_id
+      - problem_name
+      - problem_slug
+      - domain_id
+    persona:
+      - persona_id
+      - persona_name
+      - persona_slug
+      - problem_id
+    # ... continues for all entity types

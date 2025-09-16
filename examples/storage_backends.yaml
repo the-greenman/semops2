@@ -1,0 +1,478 @@
+# SemOps2 Storage Backends Configuration
+# Defines available storage systems for the knowledge repository
+
+storage_backends:
+  # =====================================
+  # Vector Stores
+  # =====================================
+
+  # ChromaDB - Local persistent vector database
+  chromadb:
+    type: "vector"
+    name: "ChromaDB"
+    description: "Local persistent vector database with Python API"
+    icon: "🔍"
+    category: "vector"
+
+    # Embedding Models
+    embedding_models:
+      default: "sentence-transformers/all-MiniLM-L6-v2"
+      options:
+        - "sentence-transformers/all-MiniLM-L6-v2"  # Fast, good quality
+        - "sentence-transformers/all-mpnet-base-v2"  # Better quality, slower
+        - "sentence-transformers/multi-qa-MiniLM-L6-cos-v1"  # QA optimized
+        - "text-embedding-ada-002"  # OpenAI (requires API key)
+        - "text-embedding-3-small"  # OpenAI latest
+
+    # Configuration
+    configuration:
+      persist_directory: "{domain_path}/knowledge/.chromadb"
+      collection_prefix: "{domain_name}"
+      distance_function: "cosine"  # cosine, l2, ip
+      allow_reset: false
+      anonymized_telemetry: false
+
+    # Capabilities
+    capabilities:
+      - "similarity_search"
+      - "metadata_filtering"
+      - "batch_operations"
+      - "persistent_storage"
+
+    # Performance Settings
+    performance:
+      default_n_results: 10
+      max_batch_size: 1000
+      indexing_threads: 4
+
+    # Requirements
+    requirements:
+      - "chromadb>=0.4.0"
+      - "sentence-transformers"
+
+  # Pinecone - Managed vector database service
+  pinecone:
+    type: "vector"
+    name: "Pinecone"
+    description: "Managed vector database service with high performance"
+    icon: "🌲"
+    category: "vector"
+
+    embedding_models:
+      default: "text-embedding-ada-002"
+      options:
+        - "text-embedding-ada-002"
+        - "text-embedding-3-small"
+        - "text-embedding-3-large"
+
+    configuration:
+      api_key_env: "PINECONE_API_KEY"
+      environment: "gcp-starter"  # us-east1-gcp, etc.
+      index_name: "{domain_name}-knowledge"
+      dimension: 1536  # For OpenAI embeddings
+      metric: "cosine"  # cosine, euclidean, dotproduct
+      pod_type: "p1.x1"  # Starter tier
+
+    capabilities:
+      - "similarity_search"
+      - "metadata_filtering"
+      - "namespaces"
+      - "real_time_updates"
+      - "high_availability"
+
+    performance:
+      default_n_results: 10
+      max_batch_size: 100
+      concurrent_requests: 10
+
+    requirements:
+      - "pinecone-client"
+
+  # Weaviate - Multi-modal vector database
+  weaviate:
+    type: "vector"
+    name: "Weaviate"
+    description: "Multi-modal vector database with GraphQL API"
+    icon: "🌊"
+    category: "vector"
+
+    embedding_models:
+      default: "text2vec-openai"
+      options:
+        - "text2vec-openai"
+        - "text2vec-huggingface"
+        - "multi2vec-clip"  # Multi-modal text+image
+        - "text2vec-transformers"
+
+    configuration:
+      url: "http://localhost:8080"
+      api_key_env: "WEAVIATE_API_KEY"
+      class_name: "{domain_name}Knowledge"
+      vectorizer: "text2vec-openai"
+      additional_headers: {}
+
+    capabilities:
+      - "similarity_search"
+      - "hybrid_search"  # Vector + BM25
+      - "multimodal_search"
+      - "graphql_api"
+      - "real_time_updates"
+
+    requirements:
+      - "weaviate-client"
+
+  # =====================================
+  # Graph Stores
+  # =====================================
+
+  # Neo4j - Property graph database
+  neo4j:
+    type: "graph"
+    name: "Neo4j"
+    description: "Leading property graph database"
+    icon: "🕸️"
+    category: "graph"
+
+    configuration:
+      url: "bolt://localhost:7687"
+      username_env: "NEO4J_USERNAME"
+      password_env: "NEO4J_PASSWORD"
+      database: "neo4j"  # Default database
+      max_connection_lifetime: 3600
+      max_connection_pool_size: 50
+      connection_timeout: 30
+
+    # Graph Schema
+    schema:
+      node_types:
+        - "Document"
+        - "Chunk"
+        - "Entity"
+        - "Person"
+        - "Organization"
+        - "Concept"
+      relationship_types:
+        - "CONTAINS"
+        - "REFERENCES"
+        - "RELATES_TO"
+        - "CREATED_BY"
+        - "PART_OF"
+        - "SIMILAR_TO"
+
+    capabilities:
+      - "graph_traversal"
+      - "pattern_matching"
+      - "centrality_analysis"
+      - "community_detection"
+      - "shortest_path"
+      - "cypher_queries"
+
+    performance:
+      query_timeout: 30
+      batch_size: 1000
+      parallel_relationships: true
+
+    requirements:
+      - "neo4j>=5.0.0"
+
+  # NetworkX - In-memory graph for development
+  networkx:
+    type: "graph"
+    name: "NetworkX"
+    description: "In-memory graph for development and small datasets"
+    icon: "📊"
+    category: "graph"
+
+    configuration:
+      persist_directory: "{domain_path}/knowledge/.graphs"
+      graph_format: "graphml"  # graphml, gml, json
+      auto_save_interval: 300  # seconds
+
+    capabilities:
+      - "graph_traversal"
+      - "centrality_analysis"
+      - "community_detection"
+      - "local_analysis"
+      - "graph_visualization"
+
+    performance:
+      max_nodes: 10000  # Memory limitations
+      max_edges: 50000
+
+    requirements:
+      - "networkx"
+      - "matplotlib"  # For visualization
+
+  # =====================================
+  # Hybrid Stores
+  # =====================================
+
+  # Elasticsearch - Full-text + vector search
+  elasticsearch:
+    type: "hybrid"
+    name: "Elasticsearch"
+    description: "Full-text search with vector capabilities"
+    icon: "🔎"
+    category: "hybrid"
+
+    configuration:
+      url: "http://localhost:9200"
+      api_key_env: "ELASTICSEARCH_API_KEY"
+      index_prefix: "{domain_name}"
+      number_of_shards: 1
+      number_of_replicas: 0
+      refresh_interval: "1s"
+
+    # Vector Configuration
+    vector_config:
+      dims: 384  # For sentence-transformers
+      similarity: "cosine"
+      index_options:
+        type: "hnsw"
+        m: 16
+        ef_construction: 200
+
+    capabilities:
+      - "full_text_search"
+      - "vector_search"
+      - "hybrid_ranking"
+      - "aggregations"
+      - "real_time_indexing"
+      - "distributed_search"
+
+    requirements:
+      - "elasticsearch>=8.0.0"
+
+  # OpenSearch - Open source alternative to Elasticsearch
+  opensearch:
+    type: "hybrid"
+    name: "OpenSearch"
+    description: "Open source search and analytics suite"
+    icon: "🔍"
+    category: "hybrid"
+
+    configuration:
+      url: "http://localhost:9200"
+      username_env: "OPENSEARCH_USERNAME"
+      password_env: "OPENSEARCH_PASSWORD"
+      index_prefix: "{domain_name}"
+      use_ssl: false
+      verify_certs: false
+
+    capabilities:
+      - "full_text_search"
+      - "vector_search"
+      - "hybrid_ranking"
+      - "machine_learning"
+
+    requirements:
+      - "opensearch-py"
+
+  # =====================================
+  # Multi-Modal Stores
+  # =====================================
+
+  # Multimodal ChromaDB with CLIP
+  multimodal_chroma:
+    type: "multimodal"
+    name: "Multimodal ChromaDB"
+    description: "ChromaDB with CLIP embeddings for text+image search"
+    icon: "🎨"
+    category: "multimodal"
+
+    embedding_models:
+      text: "sentence-transformers/all-MiniLM-L6-v2"
+      image: "sentence-transformers/clip-ViT-B-32"
+      multimodal: "sentence-transformers/clip-ViT-B-32"
+
+    configuration:
+      persist_directory: "{domain_path}/knowledge/.multimodal_db"
+      collection_prefix: "{domain_name}_mm"
+      separate_modalities: false  # Single collection vs separate
+
+    capabilities:
+      - "text_search"
+      - "image_search"
+      - "cross_modal_search"  # Text query → Image results
+      - "similarity_clustering"
+
+    requirements:
+      - "chromadb"
+      - "sentence-transformers"
+      - "torch"
+      - "torchvision"
+      - "Pillow"
+
+  # Qdrant with multi-modal support
+  qdrant:
+    type: "multimodal"
+    name: "Qdrant"
+    description: "High-performance vector database with multi-modal support"
+    icon: "⚡"
+    category: "multimodal"
+
+    configuration:
+      url: "http://localhost:6333"
+      api_key_env: "QDRANT_API_KEY"
+      collection_name: "{domain_name}_vectors"
+      vector_size: 512  # For CLIP embeddings
+      distance: "Cosine"
+
+    capabilities:
+      - "vector_search"
+      - "payload_indexing"
+      - "multimodal_search"
+      - "real_time_updates"
+      - "horizontal_scaling"
+
+    requirements:
+      - "qdrant-client"
+
+  # =====================================
+  # Time Series Stores
+  # =====================================
+
+  # InfluxDB - Time series database
+  influxdb:
+    type: "timeseries"
+    name: "InfluxDB"
+    description: "Time series database for real-time data"
+    icon: "📈"
+    category: "timeseries"
+
+    configuration:
+      url: "http://localhost:8086"
+      token_env: "INFLUXDB_TOKEN"
+      org: "semops"
+      bucket: "{domain_name}_knowledge"
+      precision: "s"  # second precision
+
+    capabilities:
+      - "temporal_queries"
+      - "aggregation"
+      - "trend_analysis"
+      - "downsampling"
+      - "continuous_queries"
+
+    requirements:
+      - "influxdb-client"
+
+  # =====================================
+  # Specialized Stores
+  # =====================================
+
+  # Document Store - For rich document storage
+  mongodb:
+    type: "document"
+    name: "MongoDB"
+    description: "Document database for structured content"
+    icon: "🍃"
+    category: "document"
+
+    configuration:
+      connection_string: "mongodb://localhost:27017"
+      database_name: "semops_{domain_name}"
+      collection_prefix: "knowledge"
+      connection_timeout: 30000
+
+    capabilities:
+      - "document_storage"
+      - "flexible_schema"
+      - "aggregation_pipeline"
+      - "full_text_search"
+      - "geospatial_queries"
+
+    requirements:
+      - "pymongo"
+
+  # Redis - In-memory cache and real-time operations
+  redis:
+    type: "cache"
+    name: "Redis"
+    description: "In-memory cache for high-speed operations"
+    icon: "🔴"
+    category: "cache"
+
+    configuration:
+      url: "redis://localhost:6379"
+      db: 0
+      password_env: "REDIS_PASSWORD"
+      connection_pool_max_connections: 50
+
+    capabilities:
+      - "caching"
+      - "session_storage"
+      - "real_time_analytics"
+      - "pub_sub_messaging"
+
+    requirements:
+      - "redis"
+
+# Default Storage Strategies
+default_storage_strategies:
+  # Strategy based on source type
+  by_source_type:
+    web_content: ["chromadb"]
+    documents: ["chromadb", "neo4j"]
+    api_feeds: ["neo4j", "elasticsearch"]
+    code_repos: ["neo4j", "elasticsearch"]
+    knowledge_graphs: ["neo4j"]
+    media_content: ["multimodal_chroma"]
+    internal_knowledge: ["chromadb", "networkx"]
+    realtime_feeds: ["influxdb", "chromadb"]
+    enterprise_systems: ["neo4j", "elasticsearch"]
+
+  # Strategy based on domain size
+  by_domain_size:
+    small:  # < 1000 documents
+      primary: "chromadb"
+      secondary: "networkx"
+    medium:  # 1000-10000 documents
+      primary: "elasticsearch"
+      secondary: "neo4j"
+    large:  # > 10000 documents
+      primary: "pinecone"
+      secondary: "neo4j"
+
+  # Strategy based on use case
+  by_use_case:
+    development:
+      primary: "chromadb"
+      secondary: "networkx"
+    production:
+      primary: "elasticsearch"
+      secondary: "neo4j"
+    enterprise:
+      primary: "pinecone"
+      secondary: "neo4j"
+    multimodal:
+      primary: "multimodal_chroma"
+      secondary: "qdrant"
+
+# Global Storage Configuration
+storage_config:
+  # Connection Management
+  connections:
+    max_pool_size: 20
+    connection_timeout: 30
+    retry_attempts: 3
+    health_check_interval: 60
+
+  # Performance
+  performance:
+    batch_size: 100
+    concurrent_operations: 4
+    cache_embeddings: true
+    lazy_loading: true
+
+  # Consistency
+  consistency:
+    sync_across_backends: true
+    conflict_resolution: "last_write_wins"
+    backup_strategy: "daily"
+
+  # Monitoring
+  monitoring:
+    enable_metrics: true
+    log_slow_queries: true
+    alert_on_failures: true

@@ -1,0 +1,174 @@
+# SemOps2 Protobuf Code Generation Configuration
+# This file controls how protobuf schemas are converted to all interface formats
+
+version: v1
+
+# Managed mode for consistent imports and naming
+managed:
+  enabled: true
+  cc_enable_arenas: true
+  java_multiple_files: true
+  java_string_check_utf8: true
+  java_package_prefix: com.semops.v2
+  go_package_prefix:
+    default: github.com/semops/semops2/generated/go
+    except:
+      - buf.build/googleapis/googleapis
+
+# Code generation plugins
+plugins:
+  # =====================================
+  # Core gRPC Code Generation
+  # =====================================
+
+  # Python gRPC - for CLI and internal services
+  - plugin: python
+    out: generated/python
+    opt:
+      - grpc_python_out=generated/python
+
+  # Python gRPC stubs with type information
+  - plugin: pyi
+    out: generated/python
+
+  # Go gRPC - for high-performance services
+  - plugin: go
+    out: generated/go
+    opt:
+      - paths=source_relative
+      - require_unimplemented_servers=false
+
+  # Go gRPC services
+  - plugin: go-grpc
+    out: generated/go
+    opt:
+      - paths=source_relative
+      - require_unimplemented_servers=false
+
+  # TypeScript/JavaScript - for web interfaces
+  - plugin: js
+    out: generated/typescript
+    opt:
+      - import_style=commonjs
+      - binary
+
+  # TypeScript definitions
+  - plugin: ts
+    out: generated/typescript
+    opt:
+      - grpc_js
+      - generate_package_definition
+
+  # =====================================
+  # API Specification Generation
+  # =====================================
+
+  # OpenAPI 3.1 specifications for REST APIs
+  - plugin: openapi
+    out: generated/api/openapi
+    opt:
+      - naming=proto
+      - depth=2
+      - enum_type=string
+      - output_mode=source_relative
+      - allow_merge=true
+
+  # JSON Schema for validation
+  - plugin: jsonschema
+    out: generated/api/jsonschema
+    opt:
+      - disallow_additional_props
+      - enforce_oneof
+      - file_extension=schema.json
+
+  # GraphQL schema generation
+  - plugin: graphql-schema
+    out: generated/api/graphql
+    opt:
+      - import_prefix=semops.v1
+      - relax_type_validation
+
+  # =====================================
+  # Validation Code Generation
+  # =====================================
+
+  # Python validation using protoc-gen-validate
+  - plugin: validate
+    out: generated/python
+    opt:
+      - lang=python
+
+  # Go validation
+  - plugin: validate
+    out: generated/go
+    opt:
+      - lang=go
+      - paths=source_relative
+
+  # TypeScript validation
+  - plugin: validate
+    out: generated/typescript
+    opt:
+      - lang=ts
+
+  # =====================================
+  # Client Library Generation
+  # =====================================
+
+  # Python client library with async support
+  - plugin: python-betterproto
+    out: generated/python/client
+    opt:
+      - python_betterproto_opt=python_package_prefix=semops.v2
+
+  # Rust client generation (for performance-critical components)
+  - plugin: rust
+    out: generated/rust
+    opt:
+      - no_server
+
+  # =====================================
+  # Documentation Generation
+  # =====================================
+
+  # HTML documentation
+  - plugin: doc
+    out: generated/docs/html
+    opt:
+      - html,index.html
+      - source_relative
+
+  # Markdown documentation
+  - plugin: doc
+    out: generated/docs/markdown
+    opt:
+      - markdown,docs.md
+      - source_relative
+
+  # =====================================
+  # Testing and Mocking
+  # =====================================
+
+  # Mock generation for testing
+  - plugin: mock
+    out: generated/mocks
+    opt:
+      - source_relative
+
+  # MCP Server Tool Generation
+  - plugin: mcp-tools
+    out: generated/mcp
+    opt:
+      - server_name=semops
+      - async_handlers=true
+      - tool_prefix=semops_
+      - stdio_transport=true
+
+# Input configuration
+inputs:
+  - directory: schema
+
+# Dependencies
+deps:
+  - buf.build/googleapis/googleapis
+  - buf.build/envoyproxy/protoc-gen-validate

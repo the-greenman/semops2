@@ -1,0 +1,435 @@
+# SemOps2 RAG Workflows Configuration
+# Defines retrieval-augmented generation workflows for different analysis scenarios
+
+rag_workflows:
+  # =====================================
+  # Basic RAG Workflows
+  # =====================================
+
+  # Simple semantic similarity search
+  basic_semantic:
+    name: "Basic Semantic Search"
+    description: "Simple vector similarity search for general queries"
+    icon: "🔍"
+
+    steps:
+      - name: "vector_search"
+        retrieval_method: "vector_similarity"
+        storage_backend: "chromadb"
+        parameters:
+          n_results: 10
+          similarity_threshold: 0.7
+          source_types: ["web_content", "documents", "internal_knowledge"]
+
+      - name: "context_compilation"
+        method: "concatenate"
+        parameters:
+          max_tokens: 4000
+          ranking_method: "similarity_score"
+
+    output_format:
+      include_sources: true
+      source_citation_format: "[[{source_id}]]"
+      confidence_scores: true
+
+  # Hybrid vector + full-text search
+  hybrid_search:
+    name: "Hybrid Vector + Text Search"
+    description: "Combines semantic similarity with keyword matching"
+    icon: "⚡"
+
+    steps:
+      - name: "vector_search"
+        retrieval_method: "vector_similarity"
+        storage_backend: "elasticsearch"
+        parameters:
+          n_results: 15
+          vector_weight: 0.7
+
+      - name: "fulltext_search"
+        retrieval_method: "bm25"
+        storage_backend: "elasticsearch"
+        parameters:
+          n_results: 15
+          text_weight: 0.3
+
+      - name: "hybrid_ranking"
+        method: "reciprocal_rank_fusion"
+        parameters:
+          k: 60  # RRF parameter
+
+      - name: "context_compilation"
+        method: "smart_truncation"
+        parameters:
+          max_tokens: 6000
+          preserve_completeness: true
+
+  # =====================================
+  # Graph-Enhanced RAG
+  # =====================================
+
+  # Graph traversal with vector search
+  graph_enhanced:
+    name: "Graph-Enhanced Retrieval"
+    description: "Vector search expanded with graph relationships"
+    icon: "🕸️"
+
+    steps:
+      - name: "initial_vector_search"
+        retrieval_method: "vector_similarity"
+        storage_backend: "chromadb"
+        parameters:
+          n_results: 8
+          similarity_threshold: 0.6
+
+      - name: "graph_expansion"
+        retrieval_method: "graph_traversal"
+        storage_backend: "neo4j"
+        parameters:
+          max_depth: 2
+          relationship_types: ["REFERENCES", "RELATES_TO", "PART_OF"]
+          expansion_limit: 5  # Max additional nodes per initial result
+
+      - name: "relevance_reranking"
+        method: "graph_pagerank"
+        parameters:
+          damping_factor: 0.85
+          iterations: 100
+
+      - name: "context_compilation"
+        method: "relationship_aware"
+        parameters:
+          max_tokens: 8000
+          include_relationships: true
+          group_by_entity: true
+
+  # Entity-centric graph retrieval
+  entity_centric:
+    name: "Entity-Centric Graph Search"
+    description: "Retrieval focused on specific entities and their relationships"
+    icon: "🎯"
+
+    steps:
+      - name: "entity_extraction"
+        method: "named_entity_recognition"
+        parameters:
+          entity_types: ["PERSON", "ORG", "PRODUCT", "CONCEPT"]
+
+      - name: "entity_matching"
+        storage_backend: "neo4j"
+        parameters:
+          fuzzy_matching: true
+          similarity_threshold: 0.8
+
+      - name: "subgraph_extraction"
+        retrieval_method: "ego_network"
+        parameters:
+          radius: 2
+          max_nodes: 50
+          include_node_properties: true
+
+      - name: "context_compilation"
+        method: "entity_grouped"
+        parameters:
+          max_tokens: 10000
+          entity_hierarchy: true
+
+  # =====================================
+  # Multi-Modal RAG
+  # =====================================
+
+  # Cross-modal text and image search
+  multimodal_search:
+    name: "Multi-Modal Text + Image Search"
+    description: "Search across text and visual content using CLIP"
+    icon: "🎨"
+
+    steps:
+      - name: "text_vector_search"
+        retrieval_method: "vector_similarity"
+        storage_backend: "chromadb"
+        parameters:
+          n_results: 8
+          embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
+          source_types: ["web_content", "documents"]
+
+      - name: "image_vector_search"
+        retrieval_method: "cross_modal_similarity"
+        storage_backend: "multimodal_chroma"
+        parameters:
+          n_results: 5
+          embedding_model: "clip-ViT-B-32"
+          search_type: "text_to_image"
+          source_types: ["media_content"]
+
+      - name: "multimodal_fusion"
+        method: "weighted_combination"
+        parameters:
+          text_weight: 0.7
+          image_weight: 0.3
+          cross_modal_boost: 1.2  # Boost when text and image align
+
+      - name: "context_compilation"
+        method: "multimodal_interleaving"
+        parameters:
+          max_tokens: 6000
+          include_image_descriptions: true
+          image_placeholder: "[IMAGE: {description}]"
+
+  # Video and audio content search
+  temporal_media_search:
+    name: "Temporal Media Search"
+    description: "Search through video and audio content with timestamps"
+    icon: "🎬"
+
+    steps:
+      - name: "text_search"
+        retrieval_method: "vector_similarity"
+        storage_backend: "chromadb"
+        parameters:
+          n_results: 5
+
+      - name: "transcript_search"
+        retrieval_method: "vector_similarity"
+        storage_backend: "chromadb"
+        parameters:
+          n_results: 5
+          source_types: ["media_content"]
+          content_types: ["transcript"]
+
+      - name: "temporal_alignment"
+        method: "timestamp_matching"
+        parameters:
+          time_window: 30  # seconds
+          context_expansion: 10  # seconds before/after
+
+      - name: "context_compilation"
+        method: "temporal_sequence"
+        parameters:
+          max_tokens: 5000
+          include_timestamps: true
+          temporal_context: true
+
+  # =====================================
+  # Domain-Specific RAG
+  # =====================================
+
+  # Code-aware retrieval
+  code_aware_retrieval:
+    name: "Code-Aware Retrieval"
+    description: "Specialized retrieval for code repositories and documentation"
+    icon: "💻"
+
+    steps:
+      - name: "semantic_code_search"
+        retrieval_method: "vector_similarity"
+        storage_backend: "elasticsearch"
+        parameters:
+          n_results: 8
+          source_types: ["code_repos"]
+          boost_fields: ["function_name", "class_name", "comments"]
+
+      - name: "dependency_expansion"
+        retrieval_method: "graph_traversal"
+        storage_backend: "neo4j"
+        parameters:
+          relationship_types: ["IMPORTS", "CALLS", "INHERITS"]
+          max_depth: 2
+
+      - name: "documentation_lookup"
+        retrieval_method: "vector_similarity"
+        storage_backend: "chromadb"
+        parameters:
+          n_results: 3
+          source_types: ["documents"]
+          query_expansion: true  # Use code elements to expand query
+
+      - name: "context_compilation"
+        method: "code_structure_aware"
+        parameters:
+          max_tokens: 8000
+          preserve_code_structure: true
+          include_dependencies: true
+          syntax_highlighting: false  # For LLM consumption
+
+  # API and structured data retrieval
+  api_data_retrieval:
+    name: "API Data Retrieval"
+    description: "Retrieval from structured API data and schemas"
+    icon: "🔌"
+
+    steps:
+      - name: "schema_matching"
+        retrieval_method: "structured_search"
+        storage_backend: "neo4j"
+        parameters:
+          match_data_types: true
+          schema_similarity: 0.8
+
+      - name: "example_search"
+        retrieval_method: "vector_similarity"
+        storage_backend: "elasticsearch"
+        parameters:
+          n_results: 5
+          source_types: ["api_feeds"]
+          boost_examples: true
+
+      - name: "context_compilation"
+        method: "structured_format"
+        parameters:
+          max_tokens: 6000
+          preserve_json_structure: true
+          include_schema_info: true
+
+  # =====================================
+  # Expert-Guided RAG
+  # =====================================
+
+  # Strategic analysis retrieval
+  strategic_analysis_rag:
+    name: "Strategic Analysis RAG"
+    description: "Retrieval optimized for strategic business analysis"
+    icon: "📊"
+    expert_optimized: "strategic_analyst"
+
+    steps:
+      - name: "market_intelligence_search"
+        retrieval_method: "vector_similarity"
+        storage_backend: "chromadb"
+        parameters:
+          n_results: 10
+          source_types: ["web_content", "documents", "api_feeds"]
+          boost_terms: ["market", "strategy", "competitive", "business"]
+          recency_boost: 0.2  # Prefer recent content
+
+      - name: "expert_knowledge_expansion"
+        retrieval_method: "graph_traversal"
+        storage_backend: "neo4j"
+        parameters:
+          relationship_types: ["EXPERT_OPINION", "STRATEGIC_RELATES"]
+          expert_nodes: ["strategic_analyst"]
+
+      - name: "polarities_context"
+        retrieval_method: "pattern_matching"
+        storage_backend: "elasticsearch"
+        parameters:
+          search_patterns: ["vs", "versus", "tension", "tradeoff"]
+          n_results: 3
+
+      - name: "context_compilation"
+        method: "strategic_framework"
+        parameters:
+          max_tokens: 12000
+          structure_by_themes: true
+          include_polarities: true
+          evidence_strength: "high"
+
+  # Technical architecture retrieval
+  technical_architecture_rag:
+    name: "Technical Architecture RAG"
+    description: "Retrieval optimized for technical architecture analysis"
+    icon: "🏗️"
+    expert_optimized: "technical_architect"
+
+    steps:
+      - name: "technical_documentation_search"
+        retrieval_method: "vector_similarity"
+        storage_backend: "elasticsearch"
+        parameters:
+          n_results: 8
+          source_types: ["code_repos", "documents", "api_feeds"]
+          boost_terms: ["architecture", "design", "pattern", "integration"]
+
+      - name: "system_relationship_mapping"
+        retrieval_method: "graph_traversal"
+        storage_backend: "neo4j"
+        parameters:
+          relationship_types: ["INTEGRATES_WITH", "DEPENDS_ON", "IMPLEMENTS"]
+          max_depth: 3
+
+      - name: "best_practices_lookup"
+        retrieval_method: "vector_similarity"
+        storage_backend: "chromadb"
+        parameters:
+          n_results: 4
+          query_terms: ["best practice", "pattern", "anti-pattern"]
+
+      - name: "context_compilation"
+        method: "technical_structure"
+        parameters:
+          max_tokens: 10000
+          group_by_system: true
+          include_diagrams: true
+          technical_depth: "high"
+
+  # =====================================
+  # Workflow Configurations
+  # =====================================
+
+# Global RAG Configuration
+rag_config:
+  # Default Settings
+  defaults:
+    max_context_tokens: 8000
+    similarity_threshold: 0.7
+    max_sources_per_query: 15
+    include_metadata: true
+    citation_format: "[[{source_id}]]"
+
+  # Performance Settings
+  performance:
+    cache_embeddings: true
+    parallel_retrieval: true
+    max_concurrent_searches: 4
+    timeout_seconds: 30
+
+  # Quality Controls
+  quality:
+    min_relevance_score: 0.5
+    duplicate_detection: true
+    content_filtering: true
+    source_diversity: true
+
+  # Context Management
+  context:
+    smart_truncation: true
+    preserve_completeness: true
+    relationship_preservation: true
+    temporal_ordering: true
+
+  # Expert Integration
+  expert_integration:
+    adapt_to_expert_type: true
+    expert_knowledge_boost: 1.2
+    methodology_alignment: true
+
+# Workflow Selection Rules
+workflow_selection:
+  # By query type
+  by_query_type:
+    factual: "basic_semantic"
+    analytical: "graph_enhanced"
+    creative: "multimodal_search"
+    technical: "code_aware_retrieval"
+    strategic: "strategic_analysis_rag"
+
+  # By source type availability
+  by_sources:
+    text_only: "hybrid_search"
+    text_and_code: "code_aware_retrieval"
+    text_and_images: "multimodal_search"
+    structured_data: "api_data_retrieval"
+
+  # By expert type
+  by_expert:
+    strategic_analyst: "strategic_analysis_rag"
+    technical_architect: "technical_architecture_rag"
+    product_strategist: "hybrid_search"
+    ux_researcher: "multimodal_search"
+
+  # By domain characteristics
+  by_domain:
+    small_domain: "basic_semantic"
+    large_domain: "graph_enhanced"
+    multimedia_domain: "multimodal_search"
+    technical_domain: "code_aware_retrieval"
