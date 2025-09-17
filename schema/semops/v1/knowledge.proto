@@ -262,7 +262,7 @@ message ContentChunk {
 }
 
 // RAG retrieval request
-message RetrievalRequest {
+message RetrieveKnowledgeRequest {
   // Search query
   string query = 1 [(buf.validate.field).string.min_len = 1];
 
@@ -302,7 +302,7 @@ message RetrievalRequest {
 }
 
 // RAG retrieval response
-message RetrievalResponse {
+message RetrieveKnowledgeResponse {
   // Retrieved knowledge results
   repeated KnowledgeResult results = 1;
 
@@ -445,8 +445,38 @@ message ProcessSourceResponse {
   google.protobuf.Timestamp estimated_completion = 3;
 }
 
+// Request to get processing status
+message GetProcessingStatusRequest {
+  // Processing job ID
+  string job_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Include detailed metrics
+  bool include_metrics = 2;
+}
+
+// Response for processing status request
+message GetProcessingStatusResponse {
+  // Current processing status
+  ProcessingStatus status = 1;
+
+  // Progress percentage (0-100)
+  float progress_percentage = 2 [(buf.validate.field).float = {
+    gte: 0.0
+    lte: 100.0
+  }];
+
+  // Estimated completion time
+  google.protobuf.Timestamp estimated_completion = 3;
+
+  // Processing metrics (if requested)
+  ProcessingMetrics metrics = 4;
+
+  // Error message if status is ERROR
+  string error_message = 5;
+}
+
 // Request to search knowledge
-message SearchRequest {
+message SearchKnowledgeRequest {
   // Search query
   string query = 1 [(buf.validate.field).string.min_len = 1];
 
@@ -474,7 +504,7 @@ message SearchRequest {
 }
 
 // Response for search request
-message SearchResponse {
+message SearchKnowledgeResponse {
   // Search results
   repeated KnowledgeResult results = 1;
 
@@ -483,39 +513,6 @@ message SearchResponse {
 
   // Search metrics
   RetrievalMetrics metrics = 3;
-}
-
-// Request to list knowledge sources
-message ListSourcesRequest {
-  // Domain to filter by
-  EntityID domain_id = 1;
-
-  // Source types to include
-  repeated SourceType source_types = 2;
-
-  // Processing status filter
-  repeated ProcessingStatus statuses = 3;
-
-  // Page size for pagination
-  int32 page_size = 4 [(buf.validate.field).int32 = {
-    gte: 1
-    lte: 100
-  }];
-
-  // Page token for pagination
-  string page_token = 5;
-}
-
-// Response for list sources request
-message ListSourcesResponse {
-  // Knowledge sources
-  repeated KnowledgeSource sources = 1;
-
-  // Next page token
-  string next_page_token = 2;
-
-  // Total count
-  int32 total_count = 3;
 }
 
 // Request to get source status
@@ -582,4 +579,388 @@ message ResourceUsage {
 
   // Network I/O in bytes
   int64 network_io_bytes = 4;
+}
+
+// =====================================
+// Knowledge Service Definitions
+// =====================================
+
+// KnowledgeService manages sources, processing, and retrieval
+service KnowledgeService {
+  // Source management operations
+  rpc AttachSource(AttachSourceRequest) returns (AttachSourceResponse);
+  rpc DetachSource(DetachSourceRequest) returns (DetachSourceResponse);
+  rpc ListSources(ListSourcesRequest) returns (ListSourcesResponse);
+  rpc GetSource(GetSourceRequest) returns (GetSourceResponse);
+  rpc UpdateSource(UpdateSourceRequest) returns (UpdateSourceResponse);
+
+  // Source processing operations
+  rpc ProcessSource(ProcessSourceRequest) returns (ProcessSourceResponse);
+  rpc GetProcessingStatus(GetProcessingStatusRequest) returns (GetProcessingStatusResponse);
+  rpc CancelProcessing(CancelProcessingRequest) returns (CancelProcessingResponse);
+
+  // Knowledge retrieval operations
+  rpc RetrieveKnowledge(RetrieveKnowledgeRequest) returns (RetrieveKnowledgeResponse);
+  rpc SearchKnowledge(SearchKnowledgeRequest) returns (SearchKnowledgeResponse);
+
+  // Source inheritance and scoping
+  rpc GetEffectiveSources(GetEffectiveSourcesRequest) returns (GetEffectiveSourcesResponse);
+  rpc ValidateSourceConfig(ValidateSourceConfigRequest) returns (ValidateSourceConfigResponse);
+}
+
+// Request to attach a source to an entity
+message AttachSourceRequest {
+  // Entity to attach source to
+  string entity_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Source type
+  SourceType source_type = 2 [(buf.validate.field).enum = {defined_only: true}];
+
+  // Source URL or identifier
+  string source_url = 3 [(buf.validate.field).string.min_len = 1];
+
+  // Source configuration (credentials, scraping options, etc.)
+  google.protobuf.Struct source_config = 4;
+
+  // Processing priority (1-10, 10=highest)
+  int32 priority = 5 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 10
+  }];
+
+  // Force reprocessing if source exists
+  bool force_reprocess = 6;
+
+  // Override chunking configuration
+  ChunkingConfig chunking_override = 7;
+
+  // Source metadata (tags, description, etc.)
+  google.protobuf.Struct metadata = 8;
+}
+
+// Response for attach source request
+message AttachSourceResponse {
+  // Generated source ID
+  string source_id = 1;
+
+  // Entity the source was attached to
+  string entity_id = 2;
+
+  // Processing job ID (if processing started)
+  string processing_job_id = 3;
+
+  // Source attachment status
+  bool success = 4;
+
+  // Attachment message
+  string message = 5;
+}
+
+// Request to detach a source from an entity
+message DetachSourceRequest {
+  // Entity to detach source from
+  string entity_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Source ID to detach
+  string source_id = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Whether to delete the source entirely or just detach
+  bool delete_source = 3;
+
+  // Whether to cascade to child entities
+  bool cascade = 4;
+}
+
+// Response for detach source request
+message DetachSourceResponse {
+  // Whether detachment was successful
+  bool success = 1;
+
+  // Detachment message
+  string message = 2;
+
+  // Number of entities affected (if cascade=true)
+  int32 affected_entities = 3;
+}
+
+// Request to list sources for an entity or globally
+message ListSourcesRequest {
+  // Entity ID to list sources for (optional for global list)
+  string entity_id = 1;
+
+  // Source types to filter by
+  repeated SourceType source_types = 2;
+
+  // Processing status filter
+  repeated ProcessingStatus statuses = 3;
+
+  // Include inherited sources from ancestors
+  bool include_inherited = 4;
+
+  // Include effective sources (own + inherited - excluded)
+  bool include_effective = 5;
+
+  // Pagination
+  Pagination pagination = 6;
+}
+
+// Response for list sources request
+message ListSourcesResponse {
+  // Sources attached directly to the entity
+  repeated KnowledgeSource direct_sources = 1;
+
+  // Sources inherited from parent entities
+  repeated InheritedSource inherited_sources = 2;
+
+  // Effective sources (direct + inherited - excluded)
+  repeated KnowledgeSource effective_sources = 3;
+
+  // Pagination info
+  string next_page_token = 4;
+  int32 total_count = 5;
+}
+
+// Source with inheritance information
+message InheritedSource {
+  // The knowledge source
+  KnowledgeSource source = 1;
+
+  // Entity it was inherited from
+  string inherited_from_entity = 2;
+
+  // Inheritance depth (1=parent, 2=grandparent, etc.)
+  int32 inheritance_depth = 3;
+
+  // Whether this source is excluded at current entity
+  bool excluded = 4;
+}
+
+// Request to get a specific source
+message GetSourceRequest {
+  // Source ID to retrieve
+  string source_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Include processing details
+  bool include_processing_details = 2;
+
+  // Include chunk statistics
+  bool include_chunk_stats = 3;
+}
+
+// Response for get source request
+message GetSourceResponse {
+  // The knowledge source
+  KnowledgeSource source = 1;
+
+  // Processing details
+  ProcessingDetails processing_details = 2;
+
+  // Chunk statistics
+  ChunkStatistics chunk_stats = 3;
+}
+
+// Request to update source configuration
+message UpdateSourceRequest {
+  // Source ID to update
+  string source_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Updated source configuration
+  google.protobuf.Struct source_config = 2;
+
+  // Updated metadata
+  google.protobuf.Struct metadata = 3;
+
+  // Updated chunking configuration
+  ChunkingConfig chunking_config = 4;
+
+  // Whether to reprocess with new configuration
+  bool reprocess = 5;
+}
+
+// Response for update source request
+message UpdateSourceResponse {
+  // Updated source
+  KnowledgeSource source = 1;
+
+  // Processing job ID (if reprocessing started)
+  string processing_job_id = 2;
+
+  // Update success status
+  bool success = 3;
+
+  // Update message
+  string message = 4;
+}
+
+// Request to get effective sources for an entity
+message GetEffectiveSourcesRequest {
+  // Entity ID to get effective sources for
+  string entity_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Source types to include
+  repeated SourceType source_types = 2;
+
+  // Include source provenance information
+  bool include_provenance = 3;
+}
+
+// Response for get effective sources request
+message GetEffectiveSourcesResponse {
+  // Effective sources with provenance
+  repeated EffectiveSource effective_sources = 1;
+
+  // Source resolution summary
+  SourceResolutionSummary resolution_summary = 2;
+}
+
+// Effective source with provenance information
+message EffectiveSource {
+  // The knowledge source
+  KnowledgeSource source = 1;
+
+  // Source provenance (how it was resolved)
+  SourceProvenance provenance = 2;
+
+  // Whether source is currently being processed
+  bool processing = 3;
+}
+
+// Source provenance information
+message SourceProvenance {
+  // How the source was obtained
+  enum ProvenanceType {
+    PROVENANCE_TYPE_UNSPECIFIED = 0;
+    PROVENANCE_TYPE_DIRECT = 1; // Directly attached to entity
+    PROVENANCE_TYPE_INHERITED = 2; // Inherited from ancestor
+    PROVENANCE_TYPE_DEFAULT = 3; // From default configuration
+  }
+
+  // Provenance type
+  ProvenanceType type = 1;
+
+  // Entity the source originated from
+  string origin_entity_id = 2;
+
+  // Path of inheritance (for inherited sources)
+  repeated string inheritance_path = 3;
+
+  // Whether source was modified at current entity
+  bool modified = 4;
+}
+
+// Source resolution summary
+message SourceResolutionSummary {
+  // Total sources available
+  int32 total_sources = 1;
+
+  // Direct sources attached to entity
+  int32 direct_sources = 2;
+
+  // Sources inherited from ancestors
+  int32 inherited_sources = 3;
+
+  // Sources excluded at this entity
+  int32 excluded_sources = 4;
+
+  // Sources currently processing
+  int32 processing_sources = 5;
+}
+
+// Request to validate source configuration
+message ValidateSourceConfigRequest {
+  // Source type to validate
+  SourceType source_type = 1 [(buf.validate.field).enum = {defined_only: true}];
+
+  // Source configuration to validate
+  google.protobuf.Struct source_config = 2;
+
+  // Entity context for validation
+  string entity_id = 3;
+}
+
+// Response for validate source configuration
+message ValidateSourceConfigResponse {
+  // Whether configuration is valid
+  bool valid = 1;
+
+  // Validation errors
+  repeated ValidationError errors = 2;
+
+  // Validation warnings
+  repeated ValidationWarning warnings = 3;
+
+  // Suggested configuration improvements
+  repeated string suggestions = 4;
+}
+
+// Request to cancel source processing
+message CancelProcessingRequest {
+  // Source ID to cancel processing for
+  string source_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Processing job ID to cancel
+  string job_id = 2;
+}
+
+// Response for cancel processing request
+message CancelProcessingResponse {
+  // Whether cancellation was successful
+  bool success = 1;
+
+  // Cancellation message
+  string message = 2;
+
+  // Cleanup status
+  bool cleanup_completed = 3;
+}
+
+// Chunk statistics for a source
+message ChunkStatistics {
+  // Total number of chunks
+  int32 total_chunks = 1;
+
+  // Average chunk size in characters
+  int32 avg_chunk_size = 2;
+
+  // Chunk size distribution
+  ChunkSizeDistribution size_distribution = 3;
+
+  // Processing statistics
+  ChunkProcessingStats processing_stats = 4;
+}
+
+// Chunk size distribution
+message ChunkSizeDistribution {
+  // Minimum chunk size
+  int32 min_size = 1;
+
+  // Maximum chunk size
+  int32 max_size = 2;
+
+  // Median chunk size
+  int32 median_size = 3;
+
+  // Standard deviation
+  float std_deviation = 4;
+
+  // Percentiles (25th, 50th, 75th, 95th)
+  repeated int32 percentiles = 5;
+}
+
+// Chunk processing statistics
+message ChunkProcessingStats {
+  // Total processing time in milliseconds
+  int64 total_processing_time_ms = 1;
+
+  // Average processing time per chunk
+  int64 avg_processing_time_per_chunk_ms = 2;
+
+  // Successful chunks
+  int32 successful_chunks = 3;
+
+  // Failed chunks
+  int32 failed_chunks = 4;
+
+  // Retry count
+  int32 total_retries = 5;
 }
