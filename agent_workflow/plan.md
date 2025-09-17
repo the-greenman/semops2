@@ -29,7 +29,7 @@ Ops/QA Agent ↔ Pipeline/Testing Boundaries
 - **Informal channels** (handoffs, notifications) for operational coordination
 - **Escalation paths** when boundary violations occur
 
-## Phase 0 – Foundations (Week 1)
+## Phase 0 – Foundations 
 1. **Contract Baseline**
    - Draft ICS-001 … ICS-007 interface contracts (schema↔service, service↔CLI, templates, knowledge ops, docs, tooling, handoffs).
    - Store contracts in `contracts/` with version headers and `#contract-change` workflow.
@@ -272,7 +272,7 @@ Each agent owns a specific system boundary and interface contract:
    - If persistent, escalate to System 4 (Intelligence) for capacity planning
    - Implement resource allocation policies
 
-## Phase 1 – Agent Roles Implementation (Weeks 2–3)
+## Phase 1 – Agent Roles Implementation
 
 ## Enhanced Coordination Mechanisms
 
@@ -377,7 +377,7 @@ validation_checklist:
 - **Cycle Time**: Average time from handoff to completion
 - **Rework Rate**: Percentage of handoffs requiring additional work
 
-## Phase 2 – Coordination & Governance Implementation (Weeks 4–5)
+## Phase 2 – Coordination & Governance Implementation 
 
 ### System 2 (Coordination) Implementation
 1. **Kanban Board Setup**
@@ -509,9 +509,9 @@ validation_checklist:
 
 ## Next Steps for Implementation
 
-1. **Week 1**: Set up contracts directory structure and initial ICS documents
-2. **Week 2**: Implement handoff template and validation automation
-3. **Week 3**: Deploy agent capability assessment and onboarding procedures
-4. **Week 4**: Launch coordination dashboard and notification system
-5. **Week 5**: Begin monthly VSM retrospectives and continuous improvement cycle
+1. **Phase 1**: Set up contracts directory structure and initial ICS documents
+2. **Phase 2**: Implement handoff template and validation automation
+3. **Phase 3**: Deploy agent capability assessment and onboarding procedures
+4. **Phase 4**: Launch coordination dashboard and notification system
+5. **Phase 5**: Begin monthly VSM retrospectives and continuous improvement cycle
 
