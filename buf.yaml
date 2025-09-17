@@ -1,0 +1,12 @@
+version: v2
+modules:
+  - path: schema
+    name: buf.build/semops/semops2
+deps:
+  - buf.build/bufbuild/protovalidate
+lint:
+  use:
+    - STANDARD
+breaking:
+  use:
+    - FILE

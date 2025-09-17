@@ -54,77 +54,113 @@ domain/cloud-security/                   # Root domain directory
 ## Extended Hierarchy with New Entity Types
 
 ```
-domain/cloud_security/
-├── domain_definition.md
+domain/cloud-security/                  # Consistent kebab-case
+├── domain.md                           # Type-based filename for context detection
 ├── problems/
-│   └── compliance_challenges.md
+│   └── compliance-challenges/          # Directory per entity instance
+│       └── problem.md                  # Type-based filename
 ├── personas/
-│   └── security_manager.md
+│   └── security-manager/               # Directory per entity instance
+│       └── persona.md                  # Type-based filename
 ├── products/
-│   └── zero_trust_platform.md
+│   └── zero-trust-platform/           # Directory per entity instance
+│       └── product.md                  # Type-based filename
 ├── solutions/                          # NEW: Solution approaches
-│   ├── ai_threat_detection.md
-│   └── features/                       # NEW: Features within solutions
-│       ├── real_time_monitoring.md
-│       ├── threat_correlation.md
-│       └── automated_response.md
+│   └── ai-threat-detection/            # Kebab-case directory
+│       ├── solution.md                 # Type-based filename
+│       └── features/                   # NEW: Features within solutions
+│           ├── real-time-monitoring/   # Kebab-case directories
+│           │   └── feature.md          # Type-based filename
+│           ├── threat-correlation/
+│           │   └── feature.md
+│           └── automated-response/
+│               └── feature.md
 ├── research/                           # NEW: Research artifacts
-│   ├── market_analysis_2024.md
-│   ├── user_interview_summary.md
-│   └── competitive_landscape.md
+│   ├── market-analysis-2024/
+│   │   └── research.md                 # Type-based filename
+│   ├── user-interview-summary/
+│   │   └── research.md
+│   └── competitive-landscape/
+│       └── research.md
 ├── strategies/                         # NEW: Strategic initiatives
-│   ├── go_to_market_strategy.md
-│   └── initiatives/                    # NEW: Specific initiatives
-│       ├── partnership_program.md
-│       ├── content_marketing.md
-│       └── analyst_engagement.md
+│   └── go-to-market-strategy/
+│       ├── strategy.md                 # Type-based filename
+│       └── initiatives/                # NEW: Specific initiatives
+│           ├── partnership-program/
+│           │   └── initiative.md       # Type-based filename
+│           ├── content-marketing/
+│           │   └── initiative.md
+│           └── analyst-engagement/
+│               └── initiative.md
 └── integrations/                       # NEW: Integration points
-    ├── existing_siem_integration.md
-    └── cloud_provider_connectors.md
+    ├── existing-siem-integration/
+    │   └── integration.md              # Type-based filename
+    └── cloud-provider-connectors/
+        └── integration.md
 ```
 
 ## Alternative Hierarchy: Market Segment Focus
 
 ```
-domain/enterprise_software/
-├── domain_definition.md
+domain/enterprise-software/
+├── domain.md                           # Type-based filename
 ├── segments/                           # NEW: Market segments
-│   ├── small_business.md              # market_segment.filename_pattern
-│   ├── mid_market.md
-│   └── enterprise.md
+│   ├── small-business/                 # Kebab-case directory
+│   │   └── segment.md                  # Type-based filename
+│   ├── mid-market/
+│   │   └── segment.md
+│   └── enterprise/
+│       └── segment.md
 ├── problems/
-│   ├── digital_transformation.md      # Problems span segments
-│   └── legacy_modernization.md
+│   ├── digital-transformation/         # Kebab-case directories
+│   │   └── problem.md                  # Type-based filename
+│   └── legacy-modernization/
+│       └── problem.md
 └── personas/
-    ├── small_business/                 # Personas organized by segment
-    │   ├── small_biz_owner.md
-    │   └── it_generalist.md
-    ├── mid_market/
-    │   ├── it_director.md
-    │   └── business_analyst.md
+    ├── small-business/                 # Personas organized by segment
+    │   ├── small-biz-owner/            # Kebab-case directories
+    │   │   └── persona.md              # Type-based filename
+    │   └── it-generalist/
+    │       └── persona.md
+    ├── mid-market/
+    │   ├── it-director/
+    │   │   └── persona.md
+    │   └── business-analyst/
+    │       └── persona.md
     └── enterprise/
-        ├── enterprise_architect.md
-        └── procurement_manager.md
+        ├── enterprise-architect/
+        │   └── persona.md
+        └── procurement-manager/
+            └── persona.md
 ```
 
 ## Cross-Cutting Entity Types
 
 ```
-domain/cloud_security/
-├── domain_definition.md
+domain/cloud-security/
+├── domain.md                           # Type-based filename
 ├── [standard hierarchy...]
 ├── integrations/                       # Cross-cutting integrations
-│   ├── siem_connector.md              # Links multiple products/solutions
-│   ├── cloud_api_gateway.md           # Integration specifications
-│   └── third_party_feeds.md
+│   ├── siem-connector/                 # Kebab-case directories
+│   │   └── integration.md              # Type-based filename
+│   ├── cloud-api-gateway/              # Integration specifications
+│   │   └── integration.md
+│   └── third-party-feeds/
+│       └── integration.md
 ├── research/                           # Domain-level research
-│   ├── threat_landscape_2024.md       # Market research
-│   ├── customer_pain_points.md        # User research
-│   └── technology_trends.md           # Technical research
-└── strategies/                        # Strategic planning
-    ├── market_penetration.md          # Business strategy
-    ├── product_roadmap.md             # Product strategy
-    └── partnership_strategy.md        # Go-to-market strategy
+│   ├── threat-landscape-2024/          # Kebab-case directories
+│   │   └── research.md                 # Type-based filename
+│   ├── customer-pain-points/           # User research
+│   │   └── research.md
+│   └── technology-trends/              # Technical research
+│       └── research.md
+└── strategies/                         # Strategic planning
+    ├── market-penetration/             # Kebab-case directories
+    │   └── strategy.md                 # Type-based filename
+    ├── product-roadmap/                # Product strategy
+    │   └── strategy.md
+    └── partnership-strategy/           # Go-to-market strategy
+        └── strategy.md
 ```
 
 ## Context Detection Examples
@@ -204,13 +240,13 @@ Generic commands work with any entity type defined in configuration:
 ```bash
 # Standard entity types (unchanged from v1)
 semops domain list
-semops problem get PROB-ComplianceChallenges
+semops problem get PROB-compliance-challenges
 semops persona create --name "Security Manager"
 
 # New entity types (automatically available)
 semops solution list                    # Lists solutions in current context
 semops feature create --name "Real-time Monitoring"
-semops research get RES-MarketAnalysis2024
+semops research get RES-market-analysis-2024
 
 # Market segments
 semops market-segment list              # Auto-generated command
@@ -218,7 +254,7 @@ semops market-segment create --name "Small Business"
 
 # Cross-cutting entities
 semops integration list                 # Lists all integrations
-semops strategy analyze STRAT-GoToMarket
+semops strategy analyze STRAT-go-to-market
 ```
 
 ## Template Variable Context
@@ -230,12 +266,12 @@ Each entity type automatically receives appropriate context variables:
 # Available in solution.md.j2 template:
 {
   "entity_type": "solution",
-  "solution_id": "SOL-AiThreatDetection",
+  "solution_id": "SOL-ai-threat-detection",
   "solution_name": "AI Threat Detection",
-  "solution_slug": "ai_threat_detection",
-  "product_id": "PROD-ZeroTrustPlatform",  # Parent context
-  "domain_id": "DOM-CloudSecurity",        # Ancestor context
-  "template_id": "TEMPLATE-Solution",
+  "solution_slug": "ai-threat-detection",
+  "product_id": "PROD-zero-trust-platform",  # Parent context
+  "domain_id": "DOM-cloud-security",         # Ancestor context
+  "template_id": "TEMPLATE-solution",
   "template_version": "1.0.0"
 }
 ```
@@ -245,11 +281,11 @@ Each entity type automatically receives appropriate context variables:
 # Available in feature.md.j2 template:
 {
   "entity_type": "feature",
-  "feature_id": "FEAT-RealTimeMonitoring",
+  "feature_id": "FEAT-real-time-monitoring",
   "feature_name": "Real-time Monitoring",
-  "solution_id": "SOL-AiThreatDetection",  # Parent
-  "product_id": "PROD-ZeroTrustPlatform",  # Grandparent
-  "domain_id": "DOM-CloudSecurity"         # Root
+  "solution_id": "SOL-ai-threat-detection",  # Parent
+  "product_id": "PROD-zero-trust-platform",  # Grandparent
+  "domain_id": "DOM-cloud-security"          # Root
 }
 ```
 

@@ -1,0 +1,53 @@
+# Core & gRPC
+protobuf>=4.25.0
+grpcio>=1.60.0
+grpcio-tools>=1.60.0
+protovalidate>=0.3.0
+
+# CLI Framework
+typer[all]>=0.9.0
+
+# Templating & Configuration
+Jinja2>=3.1.0
+PyYAML>=6.0.0
+
+# Utilities
+python-slugify>=8.0.0
+
+# Source Ingestion - Core Framework
+chonkie>=1.0.2
+
+# Web Content Extraction
+beautifulsoup4>=4.12.0
+requests>=2.31.0
+lxml>=4.9.0
+
+# Document Processing
+PyMuPDF>=1.23.0
+python-docx>=1.1.0
+openpyxl>=3.1.0
+python-pptx>=0.6.0
+
+# Code Analysis
+libcst>=1.1.0
+GitPython>=3.1.40
+
+# Chunking & Embeddings (for Chonkie)
+tiktoken>=0.5.0
+sentence-transformers>=2.2.0
+
+# Async HTTP
+httpx>=0.25.0
+
+# Vector Store (Optional - for later phases)
+chromadb
+
+# Optional Advanced Features (commented for now)
+# playwright>=1.40.0          # JavaScript-heavy sites
+# torch>=2.1.0                # AI/ML processing
+# transformers>=4.36.0        # Transformer models
+# opencv-python>=4.8.0        # Media processing
+# librosa>=0.10.1             # Audio analysis
+# aiohttp>=3.9.0              # Async web processing
+# websockets>=12.0            # Real-time feeds
+# feedparser>=6.0.10          # RSS/Atom feeds

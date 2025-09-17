@@ -53,12 +53,6 @@ semops2/
 └── tests/              # Comprehensive test suite
 ```
 
-## Current Status
-
-📋 **Planning Phase** - Architecture design and validation
-
-See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed design specifications.
-
 ## Benefits Over SemOps v1
 
 - **Unlimited Entity Types** - Add new types through configuration, not code
@@ -67,43 +61,40 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed design specifications.
 - **Easier Maintenance** - Less code, more configuration
 - **Rapid Prototyping** - Quick experimentation with new entity structures
 
-## MVP Scope
+## Architecture Approach
 
-The initial MVP focuses on a configuration-driven core with deterministic behavior and defers advanced integrations until contracts stabilize.
+SemOps2 uses a **protobuf-first approach** to eliminate interface drift and ensure perfect consistency across all access methods (CLI, REST API, GraphQL, MCP).
 
-- Scope (included)
-  - YAML-configured entity types with Pydantic-validated models
-  - Dynamic CLI for `list`, `get`, `create` based on configuration
-  - Jinja2 templates with YAML frontmatter; file emission via filesystem utilities
-  - Deterministic ID and slug generation (`python-slugify`)
-  - Basic context detection by walking directories and parsing frontmatter
-- Out of scope (deferred)
-  - Protobuf-first APIs and codegen (Buf/OpenAPI/GraphQL)
-  - Expert system workflows and analysis commands
-  - Knowledge repository, vector/graph stores, multimodal search
+- **Core Principles**
+  - All interfaces and data structures generated from authoritative protobuf schemas
+  - Single source of truth eliminates interface maintenance and drift
+  - Type-safe clients auto-generated for Python, TypeScript, Go
+  - Consistent ID formats enforced everywhere via protobuf validation
+  - Breaking change detection in CI/CD pipeline prevents contract violations
 
-## Technology Choices (MVP)
-
-- Models and validation: Pydantic v2 (with JSON Schema generation)
-- CLI: Typer
-- Templates: Jinja2
-- Frontmatter: PyYAML (safe loader)
-- Slugging: python-slugify
-- Storage: Local filesystem for entities; optional Chroma for vector store in a later phase
+- **Technology Stack**
+  - Interface Definition: Protobuf schemas with buf toolchain
+  - Code Generation: Python gRPC, OpenAPI, GraphQL, MCP tools
+  - Validation: Generated protobuf validators (no manual Pydantic)
+  - CLI: Auto-generated from protobuf service definitions
+  - Templates: Jinja2 with generated message type injection
+  - Storage: Local filesystem for entities; pluggable backends for knowledge
 
 ## Current Status
 
-📋 Planning complete with actionable MVP scope and technology decisions. Implementation to start with configuration loading, models, and dynamic CLI for domain/problem/persona/product.
+📋 **Planning Phase Complete** - Architecture design and protobuf-first approach validated.
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed design and context detection algorithm.
+🚧 **No Implementation Yet** - Ready to begin Sprint 0 foundation setup.
+
+See [TODO.md](TODO.md) for detailed implementation roadmap and [ARCHITECTURE.md](ARCHITECTURE.md) for complete design specifications.
 
 ## Next Steps
 
-1. Implement `ConfigManager`, `EntityType`, `Entity`, and `Context` models with Pydantic validation.
-2. Build `TemplateEngine`, `Frontmatter` utilities, and `FileUtils` for file emission.
-3. Implement `EntityService` with `list/get/create` and deterministic ID/slug/path generation.
-4. Implement basic `ContextDetector` and wire into CLI defaults.
-5. Add unit tests for each module and CLI happy paths.
+1. **Sprint 0**: Set up project structure, protobuf toolchain, and development environment
+2. **Sprint 1**: Define protobuf schemas and generate all Python types and service stubs
+3. **Sprint 2**: Implement generic EntityService using generated contracts
+4. **Sprint 3**: Build dynamic CLI system and template engine
+5. **Sprint 4+**: Expert system integration and knowledge repository
 
 ---
 

@@ -1,0 +1,585 @@
+// SemOps2 Knowledge Repository Schema
+// Protobuf definitions for knowledge sources, processing, and retrieval
+
+syntax = "proto3";
+package semops.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+import "semops/v1/core.proto";
+
+// Knowledge source types supported by the system
+enum SourceType {
+  SOURCE_TYPE_UNSPECIFIED = 0;
+  SOURCE_TYPE_WEB_CONTENT = 1;
+  SOURCE_TYPE_DOCUMENTS = 2;
+  SOURCE_TYPE_API_FEEDS = 3;
+  SOURCE_TYPE_CODE_REPOS = 4;
+  SOURCE_TYPE_MEDIA_CONTENT = 5;
+  SOURCE_TYPE_INTERNAL_KNOWLEDGE = 6;
+  SOURCE_TYPE_REALTIME_FEEDS = 7;
+  SOURCE_TYPE_ENTERPRISE_SYSTEMS = 8;
+}
+
+// Chonkie chunking strategies
+enum ChunkingStrategy {
+  CHUNKING_STRATEGY_UNSPECIFIED = 0;
+  CHUNKING_STRATEGY_TOKEN = 1; // Token-based chunking with tiktoken/HuggingFace
+  CHUNKING_STRATEGY_SENTENCE = 2; // Sentence boundary chunking
+  CHUNKING_STRATEGY_RECURSIVE = 3; // Hierarchical chunking with separators
+  CHUNKING_STRATEGY_SEMANTIC = 4; // Semantic similarity-based chunking
+  CHUNKING_STRATEGY_CODE = 5; // Code-aware chunking
+  CHUNKING_STRATEGY_NEURAL = 6; // Transformer-based boundary detection
+  CHUNKING_STRATEGY_LLM = 7; // LLM-powered context-aware chunking
+}
+
+// Processing status for sources
+enum ProcessingStatus {
+  PROCESSING_STATUS_UNSPECIFIED = 0;
+  PROCESSING_STATUS_PENDING = 1;
+  PROCESSING_STATUS_PROCESSING = 2;
+  PROCESSING_STATUS_COMPLETED = 3;
+  PROCESSING_STATUS_FAILED = 4;
+  PROCESSING_STATUS_RETRYING = 5;
+}
+
+// Storage backend types
+enum StorageBackendType {
+  STORAGE_BACKEND_TYPE_UNSPECIFIED = 0;
+  STORAGE_BACKEND_TYPE_VECTOR = 1;
+  STORAGE_BACKEND_TYPE_GRAPH = 2;
+  STORAGE_BACKEND_TYPE_HYBRID = 3;
+  STORAGE_BACKEND_TYPE_MULTIMODAL = 4;
+  STORAGE_BACKEND_TYPE_TIMESERIES = 5;
+}
+
+// Chunking configuration for processing pipelines
+message ChunkingConfig {
+  // Primary chunking strategy
+  ChunkingStrategy strategy = 1 [(buf.validate.field).enum = {defined_only: true}];
+
+  // Chunk size in tokens/characters (strategy-dependent)
+  int32 chunk_size = 2 [(buf.validate.field).int32 = {
+    gte: 50
+    lte: 10000
+  }];
+
+  // Overlap between chunks (0-500)
+  int32 overlap = 3 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 500
+  }];
+
+  // Similarity threshold for semantic chunking (0.0-1.0)
+  float similarity_threshold = 4 [(buf.validate.field).float = {
+    gte: 0.0
+    lte: 1.0
+  }];
+
+  // Language for code chunking
+  string language = 5;
+
+  // Separators for recursive chunking
+  repeated string separators = 6;
+
+  // Tokenizer for token-based chunking
+  string tokenizer = 7;
+
+  // Embedding model for semantic chunking
+  string embedding_model = 8;
+
+  // Minimum chunk size
+  int32 min_chunk_size = 9 [(buf.validate.field).int32 = {
+    gte: 10
+    lte: 1000
+  }];
+
+  // Whether to preserve structure/formatting
+  bool preserve_structure = 10;
+
+  // Whether to include surrounding context
+  bool include_context = 11;
+
+  // Context window size for semantic grouping
+  int32 context_window = 12 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 10
+  }];
+
+  // Code-specific boundaries to respect
+  repeated string respect_boundaries = 13;
+
+  // Additional strategy-specific parameters
+  google.protobuf.Struct parameters = 14;
+}
+
+// Processing pipeline configuration
+message ProcessingPipeline {
+  // Extractor component name
+  string extractor = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Processor component name
+  string processor = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Chunking configuration
+  ChunkingConfig chunking = 3;
+
+  // Enricher component names
+  repeated string enrichers = 4;
+
+  // Pipeline-specific options
+  google.protobuf.Struct options = 5;
+}
+
+// Storage configuration
+message StorageConfig {
+  // Primary storage backend
+  string primary = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Secondary storage backends
+  repeated string secondary = 2;
+
+  // Storage-specific configuration
+  google.protobuf.Struct config = 3;
+}
+
+// Source type definition
+message SourceTypeConfig {
+  // Source type identifier
+  string name = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Human-readable description
+  string description = 2;
+
+  // Icon for UI display
+  string icon = 3;
+
+  // Processing pipeline configuration
+  ProcessingPipeline pipeline = 4;
+
+  // Storage configuration
+  StorageConfig storage = 5;
+
+  // Supported protocols
+  repeated string protocols = 6;
+
+  // Supported MIME types
+  repeated string mime_types = 7;
+
+  // Additional options
+  google.protobuf.Struct options = 8;
+}
+
+// Knowledge source instance
+message KnowledgeSource {
+  // Unique source identifier (stable hash-based)
+  string source_id = 1 [(buf.validate.field).string.pattern = "^SRC-[A-Za-z0-9]+-[a-f0-9]{8}$"];
+
+  // Source type
+  SourceType source_type = 2 [(buf.validate.field).enum = {defined_only: true}];
+
+  // Human-readable name
+  string name = 3 [(buf.validate.field).string.min_len = 1];
+
+  // Source URL or path
+  string url = 4;
+
+  // Source-specific configuration
+  google.protobuf.Struct config = 5;
+
+  // Associated domain
+  EntityID domain_id = 6;
+
+  // Processing status
+  ProcessingStatus processing_status = 7;
+
+  // Source metadata
+  google.protobuf.Struct metadata = 8;
+
+  // Creation timestamp
+  google.protobuf.Timestamp created_at = 9;
+
+  // Last processing timestamp
+  google.protobuf.Timestamp last_processed = 10;
+
+  // Processing error (if failed)
+  string error_message = 11;
+
+  // Processing metrics
+  ProcessingMetrics metrics = 12;
+}
+
+// Processing metrics for monitoring
+message ProcessingMetrics {
+  // Number of chunks extracted
+  int32 chunks_extracted = 1;
+
+  // Total processing time in milliseconds
+  int64 processing_time_ms = 2;
+
+  // Source size in bytes
+  int64 source_size_bytes = 3;
+
+  // Number of processing retries
+  int32 retry_count = 4;
+
+  // Processing throughput (chunks/second)
+  float throughput = 5;
+}
+
+// Individual content chunk
+message ContentChunk {
+  // Unique chunk identifier
+  string chunk_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Source chunk content
+  string content = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Source this chunk came from
+  string source_id = 3;
+
+  // Chunk position/index in source
+  int32 chunk_index = 4;
+
+  // Token count (if available)
+  int32 token_count = 5;
+
+  // Character count
+  int32 char_count = 6;
+
+  // Chunk metadata (boundaries, structure, etc.)
+  google.protobuf.Struct metadata = 7;
+
+  // Embedding vector (if computed)
+  repeated float embedding = 8;
+
+  // Chunk quality score (0.0-1.0)
+  float quality_score = 9;
+
+  // Creation timestamp
+  google.protobuf.Timestamp created_at = 10;
+}
+
+// RAG retrieval request
+message RetrievalRequest {
+  // Search query
+  string query = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Optional context entity for scoped search
+  EntityID context_entity_id = 2;
+
+  // Optional expert type for expert-specific retrieval
+  string expert_type = 3;
+
+  // RAG workflow to use
+  string workflow = 4 [(buf.validate.field).string = {
+    in: [
+      "basic_semantic",
+      "hybrid_search",
+      "graph_enhanced",
+      "multimodal_search"
+    ]
+  }];
+
+  // Maximum number of results
+  int32 max_results = 5 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 100
+  }];
+
+  // Source types to include
+  repeated SourceType source_types = 6;
+
+  // Minimum relevance score threshold
+  float min_relevance_score = 7 [(buf.validate.field).float = {
+    gte: 0.0
+    lte: 1.0
+  }];
+
+  // Additional parameters
+  google.protobuf.Struct parameters = 8;
+}
+
+// RAG retrieval response
+message RetrievalResponse {
+  // Retrieved knowledge results
+  repeated KnowledgeResult results = 1;
+
+  // Workflow used for retrieval
+  string workflow_used = 2;
+
+  // Total confidence score
+  float total_confidence = 3;
+
+  // Retrieval timestamp
+  google.protobuf.Timestamp retrieved_at = 4;
+
+  // Retrieval metrics
+  RetrievalMetrics metrics = 5;
+}
+
+// Individual knowledge result
+message KnowledgeResult {
+  // Content text
+  string content = 1;
+
+  // Source identifier
+  string source_id = 2;
+
+  // Source type
+  SourceType source_type = 3;
+
+  // Relevance score (0.0-1.0)
+  float relevance_score = 4;
+
+  // Result metadata
+  google.protobuf.Struct metadata = 5;
+
+  // Citation format for references
+  string citation_format = 6;
+
+  // Source URL (if available)
+  string source_url = 7;
+
+  // Chunk identifiers included in result
+  repeated string chunk_ids = 8;
+}
+
+// Retrieval performance metrics
+message RetrievalMetrics {
+  // Query processing time in milliseconds
+  int64 query_time_ms = 1;
+
+  // Number of chunks searched
+  int32 chunks_searched = 2;
+
+  // Number of results before filtering
+  int32 raw_results_count = 3;
+
+  // Number of results after filtering
+  int32 filtered_results_count = 4;
+
+  // Average relevance score
+  float avg_relevance_score = 5;
+}
+
+// Source reference for citations
+message KnowledgeSourceRef {
+  // Source identifier
+  string source_id = 1;
+
+  // Source type
+  SourceType source_type = 2;
+
+  // Citation text
+  string citation = 3;
+
+  // Source URL
+  string url = 4;
+
+  // Reference metadata
+  google.protobuf.Struct metadata = 5;
+}
+
+// Request to add a knowledge source
+message AddSourceRequest {
+  // Source type
+  SourceType source_type = 1 [(buf.validate.field).enum = {defined_only: true}];
+
+  // Source configuration (URL, credentials, etc.)
+  google.protobuf.Struct source_config = 2;
+
+  // Domain to associate with
+  EntityID domain_id = 3;
+
+  // Processing priority (1-10, 10=highest)
+  int32 priority = 4 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 10
+  }];
+
+  // Force reprocessing if source exists
+  bool force_reprocess = 5;
+}
+
+// Response for add source request
+message AddSourceResponse {
+  // Created source
+  KnowledgeSource source = 1;
+
+  // Processing job ID
+  string job_id = 2;
+
+  // Estimated processing time
+  int64 estimated_time_ms = 3;
+}
+
+// Request to process a knowledge source
+message ProcessSourceRequest {
+  // Source to process
+  string source_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Override chunking configuration
+  ChunkingConfig chunking_override = 2;
+
+  // Processing priority
+  int32 priority = 3 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 10
+  }];
+
+  // Force reprocessing
+  bool force_reprocess = 4;
+}
+
+// Response for process source request
+message ProcessSourceResponse {
+  // Processing job ID
+  string job_id = 1;
+
+  // Updated source status
+  ProcessingStatus status = 2;
+
+  // Estimated completion time
+  google.protobuf.Timestamp estimated_completion = 3;
+}
+
+// Request to search knowledge
+message SearchRequest {
+  // Search query
+  string query = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Search strategy
+  string strategy = 2 [(buf.validate.field).string = {
+    in: [
+      "vector",
+      "graph",
+      "hybrid",
+      "multimodal"
+    ]
+  }];
+
+  // Source types to search
+  repeated SourceType source_types = 3;
+
+  // Maximum results
+  int32 limit = 4 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 100
+  }];
+
+  // Additional filters
+  google.protobuf.Struct filters = 5;
+}
+
+// Response for search request
+message SearchResponse {
+  // Search results
+  repeated KnowledgeResult results = 1;
+
+  // Total results available
+  int32 total_results = 2;
+
+  // Search metrics
+  RetrievalMetrics metrics = 3;
+}
+
+// Request to list knowledge sources
+message ListSourcesRequest {
+  // Domain to filter by
+  EntityID domain_id = 1;
+
+  // Source types to include
+  repeated SourceType source_types = 2;
+
+  // Processing status filter
+  repeated ProcessingStatus statuses = 3;
+
+  // Page size for pagination
+  int32 page_size = 4 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 100
+  }];
+
+  // Page token for pagination
+  string page_token = 5;
+}
+
+// Response for list sources request
+message ListSourcesResponse {
+  // Knowledge sources
+  repeated KnowledgeSource sources = 1;
+
+  // Next page token
+  string next_page_token = 2;
+
+  // Total count
+  int32 total_count = 3;
+}
+
+// Request to get source status
+message GetSourceStatusRequest {
+  // Source identifier
+  string source_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Include processing details
+  bool include_details = 2;
+}
+
+// Response for get source status request
+message GetSourceStatusResponse {
+  // Source information
+  KnowledgeSource source = 1;
+
+  // Processing details (if requested)
+  ProcessingDetails details = 2;
+}
+
+// Detailed processing information
+message ProcessingDetails {
+  // Processing stages completed
+  repeated string completed_stages = 1;
+
+  // Current processing stage
+  string current_stage = 2;
+
+  // Processing progress (0.0-1.0)
+  float progress = 3;
+
+  // Processing logs
+  repeated ProcessingLogEntry logs = 4;
+
+  // Resource usage
+  ResourceUsage resource_usage = 5;
+}
+
+// Processing log entry
+message ProcessingLogEntry {
+  // Log timestamp
+  google.protobuf.Timestamp timestamp = 1;
+
+  // Log level
+  string level = 2;
+
+  // Log message
+  string message = 3;
+
+  // Additional context
+  google.protobuf.Struct context = 4;
+}
+
+// Resource usage metrics
+message ResourceUsage {
+  // CPU usage percentage
+  float cpu_percent = 1;
+
+  // Memory usage in bytes
+  int64 memory_bytes = 2;
+
+  // Disk I/O in bytes
+  int64 disk_io_bytes = 3;
+
+  // Network I/O in bytes
+  int64 network_io_bytes = 4;
+}

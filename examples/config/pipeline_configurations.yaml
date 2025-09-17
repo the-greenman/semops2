@@ -1,0 +1,542 @@
+# Source Ingestion Pipeline Configuration Examples
+# SemOps2 - Chonkie-Enhanced Processing Pipelines
+
+# =============================================================================
+# PIPELINE COMPONENT DEFINITIONS
+# =============================================================================
+
+# Extractor Implementations
+extractors:
+  # Web Content Extractors
+  beautifulsoup_extractor:
+    component: "src.extractors.web.BeautifulSoupExtractor"
+    description: "Extract content from HTML using Beautiful Soup"
+    dependencies: ["beautifulsoup4", "lxml", "requests"]
+    configuration:
+      remove_navigation: true
+      extract_main_content: true
+      preserve_links: true
+      follow_redirects: true
+      user_agent: "SemOps2-Bot/1.0"
+      timeout: 30
+
+  playwright_extractor:
+    component: "src.extractors.web.PlaywrightExtractor"
+    description: "Extract content from JavaScript-heavy sites"
+    dependencies: ["playwright"]
+    configuration:
+      browser: "chromium"
+      headless: true
+      wait_for_selector: "body"
+      screenshot: false
+      extract_network_logs: false
+
+  # Document Extractors
+  pymupdf_extractor:
+    component: "src.extractors.documents.PyMuPDFExtractor"
+    description: "Fast PDF text and metadata extraction"
+    dependencies: ["PyMuPDF"]
+    configuration:
+      extract_text: true
+      extract_images: false
+      extract_tables: true
+      preserve_layout: true
+      extract_metadata: true
+
+  python_docx_extractor:
+    component: "src.extractors.documents.DocxExtractor"
+    description: "Microsoft Word document extraction"
+    dependencies: ["python-docx"]
+    configuration:
+      extract_headers_footers: true
+      extract_tables: true
+      extract_images: false
+      preserve_formatting: true
+
+  # Code Extractors
+  libcst_extractor:
+    component: "src.extractors.code.LibCSTExtractor"
+    description: "Python code extraction with formatting preservation"
+    dependencies: ["libcst"]
+    configuration:
+      include_comments: true
+      include_docstrings: true
+      include_type_annotations: true
+      preserve_whitespace: true
+
+  git_extractor:
+    component: "src.extractors.code.GitExtractor"
+    description: "Git repository content extraction"
+    dependencies: ["GitPython"]
+    configuration:
+      include_history: false
+      max_file_size: "10MB"
+      exclude_patterns: ["*.pyc", "*.log", ".git/*", "node_modules/*"]
+      include_branches: ["main", "master", "develop"]
+
+  # API Extractors
+  httpx_extractor:
+    component: "src.extractors.api.HTTPXExtractor"
+    description: "Async HTTP API data extraction"
+    dependencies: ["httpx"]
+    configuration:
+      timeout: 30
+      follow_redirects: true
+      verify_ssl: true
+      rate_limit: 10  # requests per second
+      retry_policy: "exponential_backoff"
+      max_retries: 3
+
+# Processor Implementations
+processors:
+  # Text Processors
+  markdown_converter:
+    component: "src.processors.text.MarkdownConverter"
+    description: "Convert HTML to clean Markdown"
+    dependencies: ["markdownify", "beautifulsoup4"]
+    configuration:
+      convert_links: true
+      convert_images: false
+      strip_tags: ["script", "style", "nav"]
+      wrap_width: 80
+
+  text_cleaner:
+    component: "src.processors.text.TextCleaner"
+    description: "Clean and normalize text content"
+    configuration:
+      remove_extra_whitespace: true
+      normalize_unicode: true
+      fix_encoding: true
+      remove_control_chars: true
+
+  # Code Processors
+  code_processor:
+    component: "src.processors.code.CodeProcessor"
+    description: "Process and analyze source code"
+    dependencies: ["libcst", "ast"]
+    configuration:
+      extract_functions: true
+      extract_classes: true
+      extract_imports: true
+      analyze_complexity: true
+      include_line_numbers: true
+
+  # Structured Data Processors
+  json_processor:
+    component: "src.processors.data.JSONProcessor"
+    description: "Process structured JSON data"
+    configuration:
+      flatten_nested: false
+      extract_schema: true
+      validate_structure: true
+      normalize_keys: true
+
+# Chunking Implementations (Chonkie-based)
+chunkers:
+  chonkie_token:
+    component: "src.chunkers.chonkie.TokenChunker"
+    description: "Chonkie token-based chunking"
+    dependencies: ["chonkie", "tiktoken"]
+    configuration:
+      chunk_size: 1000
+      tokenizer: "tiktoken/gpt-4"
+      overlap: 0
+
+  chonkie_recursive:
+    component: "src.chunkers.chonkie.RecursiveChunker"
+    description: "Chonkie recursive text chunking"
+    dependencies: ["chonkie"]
+    configuration:
+      chunk_size: 1000
+      overlap: 100
+      separators: ["\n\n", "\n", ". ", " "]
+      keep_separator: true
+
+  chonkie_semantic:
+    component: "src.chunkers.chonkie.SemanticChunker"
+    description: "Chonkie semantic similarity chunking"
+    dependencies: ["chonkie", "sentence-transformers"]
+    configuration:
+      similarity_threshold: 0.5
+      embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
+      chunk_size: 1200
+      min_chunk_size: 100
+
+  chonkie_code:
+    component: "src.chunkers.chonkie.CodeChunker"
+    description: "Chonkie code-aware chunking"
+    dependencies: ["chonkie"]
+    configuration:
+      language: "python"
+      respect_boundaries: ["function", "class"]
+      include_context: true
+      chunk_size: 2000
+
+# Enricher Implementations
+enrichers:
+  metadata_enricher:
+    component: "src.enrichers.MetadataEnricher"
+    description: "Extract and enhance metadata"
+    configuration:
+      extract_timestamps: true
+      extract_authors: true
+      extract_keywords: true
+      detect_language: true
+
+  link_extractor:
+    component: "src.enrichers.LinkExtractor"
+    description: "Extract and categorize links"
+    configuration:
+      extract_internal_links: true
+      extract_external_links: true
+      categorize_by_domain: true
+      check_link_validity: false
+
+  ast_enricher:
+    component: "src.enrichers.code.ASTEnricher"
+    description: "AST-based code enrichment"
+    dependencies: ["libcst", "ast"]
+    configuration:
+      extract_dependencies: true
+      extract_function_signatures: true
+      calculate_complexity: true
+      identify_patterns: true
+
+# =============================================================================
+# PREDEFINED PROCESSING PIPELINES
+# =============================================================================
+
+processing_pipelines:
+  # Fast Web Content Processing
+  fast_web:
+    name: "Fast Web Processing"
+    description: "Optimized for speed with basic chunking"
+    components:
+      extractor: "beautifulsoup_extractor"
+      processor: "text_cleaner"
+      chunker: "chonkie_token"
+      enrichers: ["metadata_enricher"]
+    configuration:
+      timeout: 15
+      parallel_processing: true
+      cache_results: true
+
+  # Comprehensive Document Analysis
+  comprehensive_documents:
+    name: "Comprehensive Document Analysis"
+    description: "Deep document analysis with semantic chunking"
+    components:
+      extractor: "pymupdf_extractor"
+      processor: "text_cleaner"
+      chunker: "chonkie_semantic"
+      enrichers: ["metadata_enricher", "document_structure_enricher"]
+    configuration:
+      extract_images: true
+      preserve_tables: true
+      semantic_analysis: true
+
+  # Advanced Code Intelligence
+  code_intelligence:
+    name: "Code Intelligence Pipeline"
+    description: "Advanced code analysis with function-aware chunking"
+    components:
+      extractor: "libcst_extractor"
+      processor: "code_processor"
+      chunker: "chonkie_code"
+      enrichers: ["ast_enricher", "dependency_enricher", "complexity_enricher"]
+    configuration:
+      include_tests: true
+      analyze_imports: true
+      extract_documentation: true
+
+  # JavaScript-Heavy Sites
+  javascript_sites:
+    name: "JavaScript Site Processing"
+    description: "Handle SPAs and dynamic content"
+    components:
+      extractor: "playwright_extractor"
+      processor: "markdown_converter"
+      chunker: "chonkie_recursive"
+      enrichers: ["metadata_enricher", "link_extractor"]
+    configuration:
+      wait_for_load: true
+      extract_dynamic_content: true
+      screenshot_fallback: true
+
+  # API Data Processing
+  structured_api_data:
+    name: "Structured API Data"
+    description: "Process REST/GraphQL API responses"
+    components:
+      extractor: "httpx_extractor"
+      processor: "json_processor"
+      chunker: "chonkie_token"
+      enrichers: ["schema_enricher", "relationship_enricher"]
+    configuration:
+      validate_schema: true
+      extract_relationships: true
+      rate_limiting: true
+
+# =============================================================================
+# EXPERT-SPECIFIC PIPELINE CONFIGURATIONS
+# =============================================================================
+
+expert_pipelines:
+  strategic_analyst:
+    name: "Strategic Analysis Pipeline"
+    description: "Optimized for strategic business analysis"
+    preferred_chunking:
+      strategy: "semantic"
+      chunk_size: 1500
+      overlap: 200
+      similarity_threshold: 0.6
+    processing_preferences:
+      preserve_structure: true
+      extract_key_metrics: true
+      identify_trends: true
+    source_priorities:
+      - web_content: 0.8
+      - documents: 0.9
+      - api_feeds: 0.7
+
+  technical_architect:
+    name: "Technical Architecture Pipeline"
+    description: "Focused on technical documentation and code"
+    preferred_chunking:
+      strategy: "code"
+      respect_boundaries: ["function", "class", "module"]
+      include_context: true
+      chunk_size: 2000
+    processing_preferences:
+      extract_dependencies: true
+      analyze_architecture: true
+      identify_patterns: true
+    source_priorities:
+      - code_repos: 1.0
+      - documents: 0.8
+      - web_content: 0.6
+
+  ux_researcher:
+    name: "UX Research Pipeline"
+    description: "User-focused content analysis"
+    preferred_chunking:
+      strategy: "sentence"
+      chunk_size: 1000
+      preserve_quotes: true
+      overlap: 150
+    processing_preferences:
+      extract_user_mentions: true
+      identify_pain_points: true
+      preserve_context: true
+    source_priorities:
+      - internal_knowledge: 0.9
+      - web_content: 0.7
+      - media_content: 0.8
+
+# =============================================================================
+# DOMAIN-SPECIFIC CONFIGURATIONS
+# =============================================================================
+
+domain_configurations:
+  # Technology/Software Domains
+  technology_stack:
+    chunking_preferences:
+      code_repos:
+        strategy: "code"
+        language_specific: true
+        include_documentation: true
+      documents:
+        strategy: "semantic"
+        technical_focus: true
+        preserve_code_blocks: true
+    enrichment_focus:
+      - "technical_terminology"
+      - "api_documentation"
+      - "code_examples"
+      - "architecture_patterns"
+
+  # Business Strategy Domains
+  business_strategy:
+    chunking_preferences:
+      web_content:
+        strategy: "semantic"
+        business_focus: true
+        extract_metrics: true
+      documents:
+        strategy: "recursive"
+        preserve_sections: true
+        highlight_decisions: true
+    enrichment_focus:
+      - "key_metrics"
+      - "strategic_initiatives"
+      - "market_analysis"
+      - "competitive_intelligence"
+
+  # Research & Development
+  research_development:
+    chunking_preferences:
+      documents:
+        strategy: "semantic"
+        academic_focus: true
+        preserve_citations: true
+      web_content:
+        strategy: "recursive"
+        extract_references: true
+    enrichment_focus:
+      - "research_methodologies"
+      - "citations_references"
+      - "experimental_data"
+      - "academic_terminology"
+
+# =============================================================================
+# PERFORMANCE OPTIMIZATION CONFIGS
+# =============================================================================
+
+performance_configs:
+  # High-Volume Processing
+  high_volume:
+    name: "High Volume Processing"
+    optimizations:
+      parallel_workers: 8
+      batch_size: 100
+      memory_limit: "2GB"
+      cache_strategy: "aggressive"
+    chunking:
+      strategy: "token"  # Fastest
+      chunk_size: 800
+      overlap: 0
+    storage:
+      batch_writes: true
+      compression: true
+
+  # Quality-First Processing
+  quality_first:
+    name: "Quality-First Processing"
+    optimizations:
+      parallel_workers: 2
+      batch_size: 10
+      memory_limit: "4GB"
+      cache_strategy: "conservative"
+    chunking:
+      strategy: "semantic"  # Best quality
+      similarity_threshold: 0.4
+      context_window: 3
+    enrichment:
+      deep_analysis: true
+      multiple_models: true
+
+  # Balanced Processing
+  balanced:
+    name: "Balanced Speed/Quality"
+    optimizations:
+      parallel_workers: 4
+      batch_size: 50
+      memory_limit: "3GB"
+      cache_strategy: "moderate"
+    chunking:
+      strategy: "recursive"
+      chunk_size: 1000
+      overlap: 100
+    enrichment:
+      selective_analysis: true
+
+# =============================================================================
+# ERROR HANDLING AND RETRY CONFIGURATIONS
+# =============================================================================
+
+error_handling:
+  # Network-related errors
+  network_errors:
+    retry_strategies:
+      timeout_errors:
+        max_retries: 3
+        backoff_factor: 2
+        max_delay: 60
+      connection_errors:
+        max_retries: 5
+        backoff_factor: 1.5
+        max_delay: 30
+      rate_limit_errors:
+        max_retries: 10
+        backoff_factor: 3
+        max_delay: 300
+
+  # Processing errors
+  processing_errors:
+    fallback_strategies:
+      chunking_errors:
+        fallback_strategy: "token"
+        reduced_chunk_size: 500
+      extraction_errors:
+        fallback_extractor: "beautifulsoup_extractor"
+        simplified_processing: true
+      enrichment_errors:
+        skip_failed_enrichers: true
+        continue_pipeline: true
+
+# =============================================================================
+# MONITORING AND METRICS
+# =============================================================================
+
+monitoring:
+  performance_metrics:
+    - processing_time
+    - throughput_chunks_per_second
+    - memory_usage
+    - error_rate
+    - cache_hit_ratio
+    - chunk_quality_score
+
+  quality_metrics:
+    - chunk_coherence_score
+    - content_coverage
+    - duplicate_detection
+    - semantic_similarity
+    - information_density
+
+  alerts:
+    high_error_rate:
+      threshold: 0.1  # 10%
+      action: "fallback_pipeline"
+    low_throughput:
+      threshold: 5    # chunks/second
+      action: "scale_workers"
+    high_memory_usage:
+      threshold: 0.9  # 90%
+      action: "reduce_batch_size"
+
+# =============================================================================
+# TESTING AND VALIDATION CONFIGS
+# =============================================================================
+
+testing_configs:
+  unit_tests:
+    sample_data:
+      web_content: "examples/test_data/sample_webpage.html"
+      pdf_document: "examples/test_data/sample_document.pdf"
+      python_code: "examples/test_data/sample_code.py"
+      json_api: "examples/test_data/sample_api_response.json"
+    expected_outputs:
+      chunk_counts: {web_content: 15, pdf_document: 25, python_code: 8}
+      processing_times: {max_seconds: 30}
+
+  integration_tests:
+    full_pipeline_tests:
+      - name: "web_to_vector_store"
+        source: "https://example.com/article"
+        expected_chunks: 20
+        max_processing_time: 60
+      - name: "pdf_to_knowledge_graph"
+        source: "sample_research_paper.pdf"
+        expected_relationships: 50
+        quality_threshold: 0.8
+
+  performance_benchmarks:
+    baseline_metrics:
+      chunks_per_second: 50
+      memory_per_chunk: "10KB"
+      error_rate: 0.05
+    regression_tests:
+      - "compare_chunking_strategies"
+      - "memory_usage_over_time"
+      - "processing_time_by_content_type"

@@ -1,0 +1,204 @@
+// SemOps2 Core Schema
+// Fundamental types and definitions used across all services
+
+syntax = "proto3";
+package semops.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+// Standardized EntityID - enforces format everywhere
+message EntityID {
+  // Primary identifier with strict format validation (kebab-case)
+  string id = 1 [(buf.validate.field).string.pattern = "^[A-Z]{2,5}-[a-z0-9-]+$"];
+
+  // Entity type for routing and validation (extensible via configuration)
+  string entity_type = 2 [(buf.validate.field).string.min_len = 1];
+
+  // URL-safe slug for file system and web usage (kebab-case)
+  string slug = 3 [(buf.validate.field).string.pattern = "^[a-z0-9-]+$"];
+
+  // Domain path context for file operations
+  string domain_path = 4;
+}
+
+// Entity status enumeration
+enum EntityStatus {
+  ENTITY_STATUS_UNSPECIFIED = 0;
+  ENTITY_STATUS_DRAFT = 1;
+  ENTITY_STATUS_ACTIVE = 2;
+  ENTITY_STATUS_ARCHIVED = 3;
+  ENTITY_STATUS_DELETED = 4;
+}
+
+// Base entity structure - all semantic entities inherit this
+message EntityMeta {
+  // Entity identifier
+  EntityID entity_id = 1;
+
+  // Entity name
+  string name = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Entity description
+  string description = 3;
+
+  // Additional metadata
+  google.protobuf.Struct metadata = 4;
+
+  // Creation timestamp
+  google.protobuf.Timestamp created_at = 5;
+
+  // Last update timestamp
+  google.protobuf.Timestamp updated_at = 6;
+
+  // Optional parent relationship
+  EntityID parent_id = 7;
+
+  // Entity tags
+  repeated string tags = 8;
+
+  // Entity status
+  EntityStatus status = 9;
+
+  // Template version used to create this entity
+  string template_version = 10;
+
+  // Entity weight/authority (0.0-1.0)
+  float weight = 11 [(buf.validate.field).float = {
+    gte: 0.0
+    lte: 1.0
+  }];
+}
+
+// Context information for operations
+message Context {
+  // Current working directory
+  string working_directory = 1;
+
+  // Detected entities in context hierarchy
+  repeated ContextEntity entities = 2;
+
+  // Available operations based on context
+  repeated string available_operations = 3;
+
+  // Context metadata
+  google.protobuf.Struct metadata = 4;
+
+  // Legacy: hierarchical list for backward compatibility
+  repeated EntityID hierarchy = 5;
+}
+
+// Entity in context hierarchy
+message ContextEntity {
+  // Entity information
+  EntityMeta entity = 1;
+
+  // Nesting level (1=root, 2=child, etc.)
+  int32 nesting_level = 2;
+
+  // File path for this entity
+  string file_path = 3;
+
+  // Directory path
+  string directory_path = 4;
+
+  // Whether this is the current/active entity
+  bool is_current = 5;
+}
+
+// Generic error information
+message ErrorInfo {
+  // Error code
+  string code = 1;
+
+  // Error message
+  string message = 2;
+
+  // Additional error details
+  google.protobuf.Struct details = 3;
+
+  // Error timestamp
+  google.protobuf.Timestamp timestamp = 4;
+}
+
+// Validation result
+message ValidationResult {
+  // Whether validation passed
+  bool valid = 1;
+
+  // Validation errors
+  repeated ValidationError errors = 2;
+
+  // Validation warnings
+  repeated ValidationWarning warnings = 3;
+}
+
+// Validation error
+message ValidationError {
+  // Field path
+  string field = 1;
+
+  // Error message
+  string message = 2;
+
+  // Error code
+  string code = 3;
+
+  // Additional context
+  google.protobuf.Struct context = 4;
+}
+
+// Validation warning
+message ValidationWarning {
+  // Field path
+  string field = 1;
+
+  // Warning message
+  string message = 2;
+
+  // Warning code
+  string code = 3;
+
+  // Additional context
+  google.protobuf.Struct context = 4;
+}
+
+// Pagination information
+message Pagination {
+  // Page size
+  int32 page_size = 1 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 100
+  }];
+
+  // Page token
+  string page_token = 2;
+
+  // Total count (if available)
+  int32 total_count = 3;
+
+  // Next page token
+  string next_page_token = 4;
+
+  // Whether there are more pages
+  bool has_more = 5;
+}
+
+// File information
+message FileInfo {
+  // File path
+  string path = 1;
+
+  // File size in bytes
+  int64 size = 2;
+
+  // File modification time
+  google.protobuf.Timestamp modified_at = 3;
+
+  // File MIME type
+  string mime_type = 4;
+
+  // File checksum
+  string checksum = 5;
+}

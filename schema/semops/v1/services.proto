@@ -1,0 +1,226 @@
+syntax = "proto3";
+
+package semops.v1;
+
+import "google/protobuf/struct.proto";
+import "semops/v1/core.proto";
+import "semops/v1/entities.proto";
+
+// EntityService provides generic CRUD operations for all entity types.
+service EntityService {
+  // Lists entities of a specific type, optionally filtered by a parent.
+  rpc ListEntities(ListEntitiesRequest) returns (ListEntitiesResponse);
+
+  // Retrieves a single entity by its ID.
+  rpc GetEntity(GetEntityRequest) returns (GetEntityResponse);
+
+  // Creates a new entity from a template and variables.
+  rpc CreateEntity(CreateEntityRequest) returns (CreateEntityResponse);
+
+  // Updates an existing entity.
+  rpc UpdateEntity(UpdateEntityRequest) returns (UpdateEntityResponse);
+
+  // Deletes an entity.
+  rpc DeleteEntity(DeleteEntityRequest) returns (DeleteEntityResponse);
+
+  // Analyzes an entity using AI experts.
+  rpc AnalyzeEntity(AnalyzeEntityRequest) returns (AnalyzeEntityResponse);
+
+  // Validates an entity's content and structure.
+  rpc ValidateEntity(ValidateEntityRequest) returns (ValidateEntityResponse);
+
+  // Detects context from current working directory.
+  rpc DetectContext(DetectContextRequest) returns (DetectContextResponse);
+
+  // Gets entity relationships and hierarchy.
+  rpc GetEntityRelationships(GetEntityRelationshipsRequest) returns (GetEntityRelationshipsResponse);
+}
+
+// Request to list entities.
+message ListEntitiesRequest {
+  // The type of entity to list, e.g., "problem".
+  string entity_type = 1;
+
+  // Optional: The ID of the parent entity to scope the list.
+  string parent_id = 2;
+}
+
+// Response containing a list of entities.
+message ListEntitiesResponse {
+  repeated EntityDocument entities = 1;
+
+  // Pagination info
+  string next_page_token = 2;
+  int32 total_count = 3;
+}
+
+// Request to get a single entity.
+message GetEntityRequest {
+  // The unique ID of the entity to retrieve.
+  string entity_id = 1;
+
+  // Whether to include content or just metadata
+  bool include_content = 2;
+}
+
+// Response containing a single entity.
+message GetEntityResponse {
+  EntityDocument entity = 1;
+}
+
+// Request to create a new entity.
+message CreateEntityRequest {
+  // The type of entity to create, e.g., "problem".
+  string entity_type = 1;
+
+  // The name of the new entity.
+  string name = 2;
+
+  // Optional: The ID of the parent entity.
+  string parent_id = 3;
+
+  // Variables to be injected into the Jinja2 template.
+  google.protobuf.Struct variables = 4;
+
+  // Template to use (if not default for entity type)
+  string template_name = 5;
+}
+
+// Response containing the newly created entity.
+message CreateEntityResponse {
+  EntityDocument entity = 1;
+}
+
+// Request to update an existing entity.
+message UpdateEntityRequest {
+  // The unique ID of the entity to update.
+  string entity_id = 1;
+
+  // Updated variables to be merged with template.
+  google.protobuf.Struct variables = 2;
+
+  // New content (if updating content directly).
+  string content = 3;
+
+  // Update frontmatter metadata.
+  google.protobuf.Struct frontmatter = 4;
+}
+
+// Response containing the updated entity.
+message UpdateEntityResponse {
+  EntityDocument entity = 1;
+}
+
+// Request to delete an entity.
+message DeleteEntityRequest {
+  // The unique ID of the entity to delete.
+  string entity_id = 1;
+
+  // Whether to delete child entities as well.
+  bool cascade = 2;
+}
+
+// Response for delete operation.
+message DeleteEntityResponse {
+  // Whether the deletion was successful.
+  bool success = 1;
+
+  // Number of entities deleted (including children if cascade=true).
+  int32 deleted_count = 2;
+}
+
+// Request to analyze an entity.
+message AnalyzeEntityRequest {
+  // The unique ID of the entity to analyze.
+  string entity_id = 1;
+
+  // Type of expert analysis to perform.
+  string expert_type = 2;
+
+  // Analysis workflow to use.
+  string workflow = 3;
+
+  // Additional analysis parameters.
+  google.protobuf.Struct parameters = 4;
+}
+
+// Response containing analysis results.
+message AnalyzeEntityResponse {
+  // Analysis results.
+  string analysis_content = 1;
+
+  // Confidence score (0.0-1.0).
+  float confidence_score = 2;
+
+  // Expert type that performed analysis.
+  string expert_type = 3;
+
+  // Knowledge sources used in analysis.
+  repeated string source_ids = 4;
+}
+
+// Request to validate an entity.
+message ValidateEntityRequest {
+  // The unique ID of the entity to validate.
+  string entity_id = 1;
+
+  // Whether to validate content or just structure.
+  bool validate_content = 2;
+}
+
+// Response containing validation results.
+message ValidateEntityResponse {
+  // Whether validation passed.
+  bool valid = 1;
+
+  // Validation errors.
+  repeated ValidationError errors = 2;
+
+  // Validation warnings.
+  repeated ValidationWarning warnings = 3;
+}
+
+// Request to detect context.
+message DetectContextRequest {
+  // Working directory path (if not current).
+  string working_directory = 1;
+}
+
+// Response containing detected context.
+message DetectContextResponse {
+  // Detected context information.
+  Context context = 1;
+}
+
+// Request to get entity relationships.
+message GetEntityRelationshipsRequest {
+  // The unique ID of the entity.
+  string entity_id = 1;
+
+  // Maximum depth to traverse.
+  int32 max_depth = 2;
+
+  // Types of relationships to include.
+  repeated string relationship_types = 3;
+}
+
+// Response containing entity relationships.
+message GetEntityRelationshipsResponse {
+  // Related entities.
+  repeated EntityRelationship relationships = 1;
+}
+
+// Entity relationship information.
+message EntityRelationship {
+  // Source entity ID.
+  string from_entity_id = 1;
+
+  // Target entity ID.
+  string to_entity_id = 2;
+
+  // Relationship type.
+  string relationship_type = 3;
+
+  // Relationship metadata.
+  google.protobuf.Struct metadata = 4;
+}

@@ -1,0 +1,369 @@
+# Enhanced Source Types Configuration with Chonkie Chunking
+# SemOps2 - Source Ingestion Pipeline Configuration
+
+source_types:
+  # Web Content Sources
+  web_content:
+    name: "Web Content"
+    description: "HTML pages, articles, documentation sites"
+    icon: "🌐"
+
+    # Processing Pipeline with Chonkie
+    pipeline:
+      extractor: "beautifulsoup_extractor"
+      processor: "markdown_converter"
+      chunking:
+        strategy: "recursive"
+        chunk_size: 1000
+        overlap: 100
+        separators: ["\n\n", "\n", ".", " "]
+        preserve_structure: true
+      enrichers: ["metadata_enricher", "link_extractor"]
+
+    # Storage Configuration
+    storage:
+      primary: "vector_store"
+      secondary: ["graph_store"]
+
+    # Supported Protocols & Types
+    protocols: ["http", "https"]
+    mime_types: ["text/html", "application/xhtml+xml"]
+
+    # Processing Options
+    options:
+      extract_links: true
+      remove_navigation: true
+      user_agent: "SemOps2-Bot/1.0"
+      timeout: 30
+
+  # Document Sources with Semantic Chunking
+  documents:
+    name: "Documents"
+    description: "PDFs, Word docs, presentations with intelligent chunking"
+    icon: "📄"
+
+    pipeline:
+      extractor: "pymupdf_extractor"  # Fast PDF extraction
+      processor: "text_processor"
+      chunking:
+        strategy: "semantic"
+        similarity_threshold: 0.5
+        embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
+        chunk_size: 1200
+        min_chunk_size: 100
+        context_window: 2  # Include surrounding chunks for context
+      enrichers: ["metadata_enricher", "document_structure_enricher"]
+
+    storage:
+      primary: "vector_store"
+      secondary: ["document_graph"]
+
+    protocols: ["file", "http", "https"]
+    mime_types:
+      - "application/pdf"
+      - "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      - "application/vnd.ms-powerpoint"
+      - "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+
+    options:
+      extract_images: true
+      preserve_tables: true
+      ocr_fallback: true
+
+  # Code Repository Sources with Code-Aware Chunking
+  code_repos:
+    name: "Code Repositories"
+    description: "Source code with function/class-aware chunking"
+    icon: "💻"
+
+    pipeline:
+      extractor: "libcst_extractor"
+      processor: "code_processor"
+      chunking:
+        strategy: "code"
+        language: "python"
+        respect_boundaries: ["function", "class", "module"]
+        chunk_size: 2000
+        include_context: true
+        extract_docstrings: true
+      enrichers: ["ast_enricher", "dependency_enricher", "function_signature_enricher"]
+
+    storage:
+      primary: "graph_store"  # Code has rich relationships
+      secondary: ["vector_store"]
+
+    protocols: ["git", "github", "gitlab"]
+    languages: ["python", "javascript", "typescript", "go", "rust", "java"]
+
+    options:
+      include_tests: true
+      extract_imports: true
+      analyze_complexity: true
+
+  # API Data Sources with Token-Based Chunking
+  api_feeds:
+    name: "API Data Feeds"
+    description: "REST APIs, GraphQL endpoints with structured chunking"
+    icon: "🔌"
+
+    pipeline:
+      extractor: "httpx_extractor"
+      processor: "json_processor"
+      chunking:
+        strategy: "token"
+        chunk_size: 1500
+        tokenizer: "tiktoken/gpt-4"
+        preserve_json_structure: true
+      enrichers: ["schema_enricher", "relationship_enricher"]
+
+    storage:
+      primary: "graph_store"  # APIs often have structured relationships
+      secondary: ["vector_store"]
+
+    protocols: ["rest", "graphql", "websocket"]
+    authentication: ["bearer", "api_key", "oauth2"]
+
+    options:
+      rate_limit: 10  # requests per second
+      timeout: 30
+      retry_policy: "exponential_backoff"
+      cache_responses: true
+
+  # Media Content with AI-Enhanced Processing
+  media_content:
+    name: "Media Content"
+    description: "Images, videos, audio with AI analysis and chunking"
+    icon: "🎬"
+
+    pipeline:
+      extractor: "multimodal_extractor"
+      processor: "ai_media_processor"  # Uses CLIP, Whisper, etc.
+      chunking:
+        strategy: "token"  # For extracted descriptions/transcripts
+        chunk_size: 800
+        tokenizer: "tiktoken/gpt-4"
+        temporal_boundaries: true  # For video/audio segments
+      enrichers: ["clip_enricher", "temporal_enricher", "media_metadata_enricher"]
+
+    storage:
+      primary: "multimodal_store"
+      secondary: ["vector_store"]
+
+    protocols: ["http", "file"]
+    mime_types:
+      - "image/*"
+      - "video/*"
+      - "audio/*"
+
+    options:
+      extract_audio_transcript: true
+      generate_image_descriptions: true
+      temporal_segmentation: true
+
+  # Internal Knowledge with Context-Aware Chunking
+  internal_knowledge:
+    name: "Internal Knowledge"
+    description: "Meeting notes, decisions, organizational knowledge"
+    icon: "🏢"
+
+    pipeline:
+      extractor: "file_extractor"
+      processor: "internal_processor"
+      chunking:
+        strategy: "recursive"
+        chunk_size: 1000
+        overlap: 150
+        separators: ["\n\n", "\n", "## ", "- "]
+        detect_sections: true
+      enrichers: ["people_enricher", "decision_enricher", "date_enricher"]
+
+    storage:
+      primary: "vector_store"
+      secondary: ["organizational_graph"]
+
+    protocols: ["file", "sharepoint", "confluence", "notion"]
+
+    options:
+      extract_attendees: true
+      identify_decisions: true
+      tag_topics: true
+
+  # Real-time Feeds with Temporal Chunking
+  realtime_feeds:
+    name: "Real-time Data Feeds"
+    description: "RSS, news feeds, social media with temporal awareness"
+    icon: "📡"
+
+    pipeline:
+      extractor: "feed_extractor"
+      processor: "stream_processor"
+      chunking:
+        strategy: "sentence"  # Good for news articles
+        chunk_size: 800
+        respect_boundaries: ["paragraph", "sentence"]
+        temporal_grouping: true
+      enrichers: ["trend_enricher", "sentiment_enricher", "entity_enricher"]
+
+    storage:
+      primary: "time_series_store"
+      secondary: ["vector_store"]
+
+    protocols: ["rss", "atom", "websocket", "sse"]
+
+    options:
+      retention_policy: "30d"
+      real_time: true
+      trend_detection: true
+      deduplication: true
+
+# Chunking Strategy Configurations
+chunking_strategies:
+  # Chonkie strategy configurations
+  token:
+    description: "Split text based on token count using tiktoken or HuggingFace tokenizers"
+    parameters:
+      chunk_size: 1000
+      tokenizer: "tiktoken/gpt-4"
+      overlap: 0
+
+  sentence:
+    description: "Split text at sentence boundaries for natural breaks"
+    parameters:
+      chunk_size: 800
+      overlap: 50
+      min_sentences: 1
+
+  recursive:
+    description: "Hierarchical chunking with multiple separators"
+    parameters:
+      chunk_size: 1000
+      overlap: 100
+      separators: ["\n\n", "\n", ". ", " "]
+      keep_separator: true
+
+  semantic:
+    description: "Group content by semantic similarity using embeddings"
+    parameters:
+      similarity_threshold: 0.5
+      embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
+      chunk_size: 1200
+      min_chunk_size: 100
+
+  code:
+    description: "Code-aware chunking respecting language structure"
+    parameters:
+      language: "python"
+      respect_boundaries: ["function", "class"]
+      include_context: true
+      chunk_size: 2000
+
+  neural:
+    description: "Transformer-based chunk boundary detection"
+    parameters:
+      model: "neural-chunker-v1"
+      chunk_size: 1000
+      confidence_threshold: 0.8
+
+  llm:
+    description: "LLM-powered context-aware chunking"
+    parameters:
+      model: "gpt-4"
+      prompt_template: "chunk_boundaries"
+      chunk_size: 1200
+      preserve_context: true
+
+# Storage Backend Configurations
+storage_backends:
+  vector_store:
+    type: "vector"
+    implementation: "chromadb"
+    configuration:
+      persist_directory: "{domain_path}/knowledge/.chromadb"
+      collection_prefix: "{domain_name}"
+      embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
+
+  graph_store:
+    type: "graph"
+    implementation: "networkx"  # For development
+    configuration:
+      persist_directory: "{domain_path}/knowledge/.graphs"
+
+  multimodal_store:
+    type: "multimodal"
+    implementation: "multimodal_chromadb"
+    configuration:
+      embedding_model: "sentence-transformers/clip-ViT-B-32"
+
+  time_series_store:
+    type: "timeseries"
+    implementation: "file_based"  # Simple implementation for now
+    configuration:
+      data_directory: "{domain_path}/knowledge/.timeseries"
+
+# Expert-Specific Chunking Preferences
+expert_chunking_preferences:
+  strategic_analyst:
+    preferred_strategies:
+      - semantic      # For coherent strategic analysis
+      - recursive     # For structured documents
+    chunk_size: 1500
+    overlap: 200
+    context_window: 3
+
+  product_strategist:
+    preferred_strategies:
+      - sentence      # For clear problem statements
+      - semantic      # For related feature grouping
+    chunk_size: 1000
+    overlap: 150
+    focus_keywords: ["problem", "solution", "feature", "user"]
+
+  ux_researcher:
+    preferred_strategies:
+      - semantic      # For user behavior patterns
+      - recursive     # For research structure
+    chunk_size: 1200
+    overlap: 180
+    preserve_quotes: true
+
+  technical_architect:
+    preferred_strategies:
+      - code          # For technical documentation
+      - recursive     # For system architecture docs
+    chunk_size: 2000
+    respect_technical_boundaries: true
+    include_code_context: true
+
+# Processing Pipeline Templates
+pipeline_templates:
+  fast_web_processing:
+    description: "Optimized for speed with simple chunking"
+    pipeline:
+      extractor: "requests_simple"
+      processor: "text_only"
+      chunking:
+        strategy: "token"
+        chunk_size: 800
+      enrichers: ["basic_metadata"]
+
+  comprehensive_document_analysis:
+    description: "Deep analysis with semantic understanding"
+    pipeline:
+      extractor: "pymupdf_advanced"
+      processor: "structure_preserving"
+      chunking:
+        strategy: "semantic"
+        embedding_model: "sentence-transformers/all-mpnet-base-v2"
+        similarity_threshold: 0.4
+      enrichers: ["metadata_enricher", "structure_enricher", "entity_enricher"]
+
+  code_intelligence:
+    description: "Advanced code analysis with dependency tracking"
+    pipeline:
+      extractor: "libcst_full"
+      processor: "ast_analyzer"
+      chunking:
+        strategy: "code"
+        respect_boundaries: ["function", "class", "module"]
+        include_imports: true
+      enrichers: ["ast_enricher", "dependency_enricher", "complexity_enricher"]

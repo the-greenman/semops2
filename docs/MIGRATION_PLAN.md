@@ -6,27 +6,30 @@ This document outlines the strategy for migrating from the current entity-specif
 
 ## Migration Phases
 
-### Phase 1: Foundation & Configuration System
-**Goal**: Build core configuration and model infrastructure
+### Phase 1: Protobuf Foundation & Code Generation
+**Goal**: Establish protobuf-first architecture and generated type system
 
 #### Tasks
-- [ ] Create entity type configuration system
-- [ ] Implement `EntityType` and `EntityConfig` models
-- [ ] Build configuration loader and validator
-- [ ] Create JSON schema validation for entity types
-- [ ] Set up template engine foundation (Jinja2)
+- [ ] Define protobuf schemas for all entity types and services
+- [ ] Set up buf toolchain and code generation pipeline
+- [ ] Generate Python gRPC clients and validation from protobuf
+- [ ] Implement configuration loader using generated message types
+- [ ] Set up template engine foundation (Jinja2) with generated types
+- [ ] Document generated module boundaries (packages, versioning, publishing)
 
 #### Deliverables
-- `config/entity_types.yaml` with current entity definitions
-- `src/models/entity_type.py` - Entity type model
-- `src/core/config_manager.py` - Configuration management
-- Validation schemas for entity type definitions
-- Unit tests for configuration system
+- `schema/v1/*.proto` - Complete protobuf interface definitions
+- `src/semops/generated/` - Auto-generated Python types and gRPC stubs
+- `docs/INTERFACE_CONTRACT.md` - Generated API package layout, versioning policy, and consumer guidelines
+- `src/core/config_manager.py` - Configuration management using protobuf types
+- Generated validation and JSON schemas from protobuf
+- Unit tests for configuration system using generated message builders
 
 #### Success Criteria
-- Load and validate existing entity types from configuration
-- Configuration validation catches invalid definitions
-- Template engine can process basic Jinja2 templates
+- All protobuf schemas compile and generate valid Python code
+- Generated types can load and validate entity type configurations
+- Template engine works with generated message types (no manual Pydantic models)
+- Code generation artifacts are published with clear versioning for downstream modules
 
 ### Phase 2: Generic Entity Service
 **Goal**: Replace entity-specific services with generic EntityService
@@ -37,18 +40,23 @@ This document outlines the strategy for migrating from the current entity-specif
 - [ ] Build template processing and document generation
 - [ ] Implement file system utilities and frontmatter handling
 - [ ] Create entity CRUD operations (list, get, create, analyze)
+- [ ] Implement gRPC service adapter that exposes `EntityService` over the generated contract
+- [ ] Add contract tests that exercise the server via gRPC stubs
 
 #### Deliverables
 - `src/core/entity_service.py` - Generic entity operations
 - `src/core/template_engine.py` - Template processing
 - `src/core/context_detector.py` - Context detection
 - `src/utils/` - File utilities and frontmatter handling
+- `src/server/entity_service_server.py` - gRPC server wiring for the generated contract
+- `tests/contracts/test_entity_service_server.py` - Contract tests hitting the gRPC surface
 - Integration tests with real templates and data
 
 #### Success Criteria
 - EntityService can perform all operations for domain/problem/persona/product
 - Context detection works equivalently to v1
 - Template processing generates valid documents with frontmatter
+- gRPC server passes contract tests and is consumable by external clients
 
 ### Phase 3: Dynamic CLI System
 **Goal**: Replace hardcoded CLI commands with auto-generated commands
@@ -59,10 +67,13 @@ This document outlines the strategy for migrating from the current entity-specif
 - [ ] Build output formatters for different entity types
 - [ ] Port error handling with helpful hints
 - [ ] Add comprehensive CLI testing framework
+- [ ] Consume EntityService exclusively through generated gRPC clients
+- [ ] Provide configuration for discovering local/remote EntityService endpoints
 
 #### Deliverables
 - `src/cli/dynamic_commands.py` - Command generation
 - `src/cli/formatters.py` - Output formatting
+- `tests/cli/test_entity_service_integration.py` - CLI tests executed against contract-compliant server fixtures
 - Auto-generated CLI commands for all entity types
 - Comprehensive error handling and hints
 - CLI integration tests
@@ -72,6 +83,7 @@ This document outlines the strategy for migrating from the current entity-specif
 - New entity types automatically get full CLI support
 - Error messages and hints match v1 quality
 - All output formats (table, JSON, YAML) work correctly
+- CLI interacts with EntityService via gRPC only, validated in integration tests
 
 ### Phase 4: Template Migration & Extension
 **Goal**: Migrate existing templates and add new entity types
@@ -164,18 +176,21 @@ This document outlines the strategy for migrating from the current entity-specif
 - Use real templates and entity data
 - Validate CLI command generation and execution
 - Test context detection with real directory structures
+- Verify CLI ↔ EntityService interactions over gRPC in isolated fixtures
 
 ### Compatibility Testing
 - Compare v1 and v2 outputs for identical inputs
 - Test with existing domain/problem/persona data
 - Verify all CLI commands produce equivalent results
 - Validate MCP server tool compatibility
+- Ensure external consumers using generated stubs remain compatible after migrations
 
 ### Performance Testing
 - Benchmark entity operations against v1 baseline
 - Test with large numbers of entities and templates
 - Memory and CPU usage profiling
 - CLI response time measurements
+- Measure gRPC server throughput and client latency under load
 
 ## Rollback Strategy
 
@@ -203,6 +218,7 @@ This document outlines the strategy for migrating from the current entity-specif
 - [ ] Configuration-driven entity type definitions
 - [ ] Auto-generated CLI commands from configuration
 - [ ] Template-based document generation
+- [ ] EntityService contract enforced through published protobuf/gRPC interface
 
 ### User Experience Success
 - [ ] No change to user workflow or commands
@@ -221,11 +237,13 @@ This document outlines the strategy for migrating from the current entity-specif
 - Generic EntityService implementation
 - Context detection and file operations
 - Template processing and document generation
+- gRPC server adapter and contract tests
 
 ### Phase 3 - CLI System (Weeks 5-6)
 - Dynamic command generation
 - Output formatting and error handling
 - CLI integration testing
+- gRPC client wiring and endpoint configuration
 
 ### Phase 4 - Template Migration (Weeks 7-8)
 - Convert existing templates

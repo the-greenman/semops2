@@ -9,7 +9,17 @@
 - [x] **Directory Structure** - Examples of how configuration maps to file system
 - [x] **Documentation** - Architecture docs and migration plan
 
+**STATUS**: Planning phase complete. No implementation exists yet.
+
 ## Phase 1: Schema-First Foundation
+
+### Sprint 0 (Foundation Setup - REQUIRED FIRST)
+- [ ] **Project Structure**: Create `src/`, `tests/`, proper Python package structure
+- [ ] **Build Configuration**: Set up `pyproject.toml`, `requirements.txt`, development dependencies
+- [ ] **Protobuf Toolchain**: Install and configure `buf`, protobuf compiler, validation plugins
+- [ ] **Buf Configuration**: Create `buf.yaml`, `buf.gen.yaml` for Python/gRPC/OpenAPI generation
+- [ ] **Git Setup**: Configure `.gitignore`, `.gitattributes` for generated files
+- [ ] **Development Environment**: Set up pre-commit hooks, linting, basic CI/CD
 
 ### Sprint 1 (Protobuf-First MVP)
 - [ ] **Protobuf Schema Setup**: Define `core.proto`, `entities.proto`, `services.proto` in `schema/v1/`
@@ -20,7 +30,7 @@
   - [ ] Configure git attributes for generated files
   - [ ] Create pre-commit hooks to prevent manual edits
 - [ ] **Code Generation**: Run `buf generate` to create all Python types and service stubs
-- [ ] **ConfigManager**: Load YAML using generated protobuf message types (no manual Pydantic)
+- [ ] **ConfigManager**: Load YAML using generated protobuf message types (protobuf-only, no Pydantic)
 - [ ] **Validation**: Use generated protobuf validators with actionable error messages
 - [ ] **EntityService**: Implement gRPC service using generated request/response types
 - [ ] **Context Detection**: Use generated `Context` and `EntityID` message types
@@ -31,7 +41,7 @@
 - [ ] Unit tests using generated message builders and service stubs
 
 ### Generated Types & Validation
-- [ ] **All types from protobuf**: `EntityType`, `Entity`, `Context` auto-generated (no manual models)
+- [ ] **All types from protobuf**: `EntityType`, `Entity`, `Context` auto-generated (no manual Pydantic models)
 - [ ] **Protobuf validation**: Generated validators with regex patterns and constraints
 - [ ] **Schema evolution**: Backward compatibility built into protobuf definitions
 - [ ] **JSON Schema generation**: Auto-generated from protobuf for external validation

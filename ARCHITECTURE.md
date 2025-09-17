@@ -65,15 +65,81 @@ CLI commands generated from entity type configurations:
 
 ## Configuration Management
 
-To decouple the `semops2` tool from the knowledge bases it manages, configuration is loaded in a layered manner.
+To decouple the `semops2` tool from the knowledge bases it manages, configuration is loaded in a layered manner that supports both portability and customization.
 
-1.  **Project Root Discovery**: The tool searches upwards from the current directory for a marker file (e.g., `.semops-project`) to identify the root of the knowledge base project.
-2.  **Layered Loading**: The `ConfigManager` loads configuration in the following order, with later layers overriding earlier ones:
-    *   **Built-in Defaults**: A default set of configurations is bundled with the `semops2` application.
-    *   **Project Configuration**: Configurations are loaded from a designated directory (e.g., `.semops/`) within the project root. This same override logic applies to assets like Jinja2 templates, allowing a project to use its own versions in place of the defaults.
-    *   **Explicit Path**: A CLI flag (`--config-path`) can be used to provide a path to a configuration directory, which takes the highest precedence.
+### Configuration Loading Hierarchy
 
-This allows `semops2` to be a portable tool while giving each knowledge base full control over its own configuration.
+The `ConfigManager` loads configuration in the following order, with later layers overriding earlier ones:
+
+1.  **Built-in Defaults** - Embedded in the tool itself
+    *   Core entity types (domain, problem, persona, product)
+    *   Default source types and processing pipelines
+    *   Standard expert types and workflows
+    *   Basic storage backend configurations
+
+2.  **Project Configuration** - `.semops/` directory at repository root
+    *   Custom entity types and extensions
+    *   Domain-specific source types and chunking strategies
+    *   Project-specific expert configurations
+    *   Custom templates and workflows
+    *   Local storage backend overrides
+
+3.  **Explicit Config Path** - `--config-path` command line argument
+    *   Development and testing configurations
+    *   Environment-specific settings
+    *   Temporary configuration overrides
+
+### Configuration Discovery Process
+
+1.  **Project Root Discovery**: The tool searches upwards from the current directory for:
+    *   `.semops-project` marker file, or
+    *   `.semops/` configuration directory, or
+    *   `git` repository root with SemOps configuration
+
+2.  **Configuration File Loading**: Within each configuration directory:
+    ```
+    .semops/config/
+    ├── entity_types.yaml      # Entity type definitions
+    ├── source_types.yaml      # Knowledge source processing
+    ├── expert_types.yaml      # AI expert configurations
+    ├── storage_backends.yaml  # Vector/graph store configs
+    ├── rag_workflows.yaml     # Retrieval workflows
+    └── pipeline_configurations.yaml  # Processing pipelines
+    ```
+
+3.  **Template Discovery**: Custom templates override built-in defaults:
+    ```
+    .semops/templates/
+    ├── domain.md.j2           # Custom domain template
+    ├── problem.md.j2          # Custom problem template
+    └── solution.md.j2         # Custom solution template
+    ```
+
+### Configuration Examples
+
+Complete configuration examples are available in [`examples/config/`](examples/config/):
+
+- **Entity Types**: [`examples/config/entity_types.yaml`](examples/config/entity_types.yaml)
+- **Source Types**: [`examples/config/source_types.yaml`](examples/config/source_types.yaml)
+- **Expert Types**: [`examples/config/expert_types.yaml`](examples/config/expert_types.yaml)
+- **Complete Example**: [`examples/config/complete_knowledge_config.yaml`](examples/config/complete_knowledge_config.yaml)
+
+### Configuration Validation
+
+All configuration files use protobuf-generated schemas for validation:
+
+```bash
+# Validate current configuration
+semops config validate
+
+# Generate JSON schema from protobuf
+semops config schema --output-format json
+
+# Test configuration loading
+semops config test --dry-run
+```
+
+This layered approach allows `semops2` to be a portable tool while giving each knowledge base full control over its own configuration, entity types, and processing workflows.
 
 ## Testing Strategy
 
@@ -111,10 +177,10 @@ semops2/
 ├── schema/                   # **SERVICE CONTRACTS** - Protobuf schemas defining all interfaces
 │   └── v1/
 │       ├── core.proto        # Base types: EntityID, Entity, validation rules
-│       ├── entities.proto    # Domain, Problem, Persona, Product definitions
-│       ├── experts.proto     # Expert system service contracts
-│       ├── knowledge.proto   # Knowledge repository service contracts
-│       └── services.proto    # Main service interfaces: EntityService, ExpertService
+│       ├── entities.proto    # Entity document representation (file-based view)
+│       ├── knowledge.proto   # Knowledge repository service contracts (IMPLEMENTED)
+│       ├── services.proto    # Main service interfaces: EntityService
+│       └── experts.proto     # Expert system service contracts (PLANNED)
 ├── src/                      # Source code implementing the contracts
 │   ├── core/
 │   │   ├── generated/        # **GENERATED FROM CONTRACTS** - Auto-generated from protobuf
@@ -123,8 +189,8 @@ semops2/
 │   │   │   └── *_pb2_grpc.py          # gRPC service stubs
 │   │   ├── entity_service.py # Implements protobuf-defined EntityService contract
 │   │   ├── template_service.py # Manages template loading, versioning, and migration
-│   │   ├── expert_service.py # Implements protobuf-defined ExpertService contract
 │   │   ├── knowledge_service.py # Implements protobuf-defined KnowledgeService contract
+│   │   ├── expert_service.py # Implements protobuf-defined ExpertService contract (PLANNED)
 │   │   ├── template_engine.py # Jinja2 template processing using generated types
 │   │   ├── context_detector.py # Working directory context detection
 │   │   └── config_manager.py  # Configuration loading and validation

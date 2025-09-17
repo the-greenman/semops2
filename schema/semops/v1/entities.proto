@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package semops.v1;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+import "semops/v1/core.proto";
+
+// Document representation of an entity - file-based view
+message EntityDocument {
+  // The unique identifier for the entity.
+  EntityID entity_id = 1;
+
+  // The raw frontmatter metadata from the entity's file.
+  google.protobuf.Struct frontmatter = 2;
+
+  // The markdown content of the entity.
+  string content = 3;
+
+  // The full path to the entity's file on disk.
+  string file_path = 4;
+
+  // File modification timestamp
+  google.protobuf.Timestamp file_modified_at = 5;
+
+  // Template used to generate this document
+  string template_name = 6;
+
+  // Template version
+  string template_version = 7;
+}

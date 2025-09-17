@@ -243,7 +243,7 @@ entity_types:
     slug_field: "strategy_slug"
     template: "strategy.md.j2"
     directory_name: "strategies"
-    filename_pattern: "{slug}.md"
+    filename_pattern: "{entity_type}.md"
     parent_entity: "domain"
     child_entities: ["initiative"]
     context_level: 2
@@ -264,7 +264,7 @@ entity_types:
     slug_field: "initiative_slug"
     template: "initiative.md.j2"
     directory_name: "initiatives"
-    filename_pattern: "{slug}.md"
+    filename_pattern: "{entity_type}.md"
     parent_entity: "strategy"
     child_entities: []
     context_level: 3

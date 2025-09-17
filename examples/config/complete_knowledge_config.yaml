@@ -1,0 +1,542 @@
+# Complete Knowledge Repository Configuration Example
+# SemOps2 - Production-Ready Configuration with Chonkie Integration
+
+# =============================================================================
+# DOMAIN CONFIGURATION
+# =============================================================================
+
+domain:
+  name: "cloud-security"
+  description: "Enterprise cloud security domain"
+  root_path: "/domains/cloud-security"
+
+# =============================================================================
+# SOURCE TYPES WITH CHONKIE CHUNKING
+# =============================================================================
+
+source_types:
+  # Primary web sources for industry knowledge
+  security_documentation:
+    name: "Security Documentation"
+    description: "Official security frameworks, standards, and best practices"
+    icon: "🔒"
+
+    pipeline:
+      extractor: "beautifulsoup_extractor"
+      processor: "markdown_converter"
+      chunking:
+        strategy: "recursive"
+        chunk_size: 1200
+        overlap: 150
+        separators: ["\n## ", "\n### ", "\n\n", ". "]
+        preserve_structure: true
+      enrichers: ["metadata_enricher", "security_term_enricher", "link_extractor"]
+
+    storage:
+      primary: "vector_store"
+      secondary: ["graph_store"]
+
+    protocols: ["https"]
+    domains: ["nist.gov", "owasp.org", "cisecurity.org", "sans.org"]
+
+    options:
+      authority_weight: 0.9  # High trust for official sources
+      update_frequency: "weekly"
+      cache_duration: "24h"
+
+  # Technical implementation guides
+  technical_guides:
+    name: "Technical Implementation Guides"
+    description: "Vendor documentation and implementation guides"
+    icon: "⚙️"
+
+    pipeline:
+      extractor: "beautifulsoup_extractor"
+      processor: "text_cleaner"
+      chunking:
+        strategy: "semantic"
+        similarity_threshold: 0.6
+        embedding_model: "sentence-transformers/all-mpnet-base-v2"
+        chunk_size: 1000
+        context_window: 2
+      enrichers: ["metadata_enricher", "code_block_enricher", "vendor_enricher"]
+
+    storage:
+      primary: "vector_store"
+      secondary: ["vendor_knowledge_graph"]
+
+    protocols: ["https"]
+    domains: ["docs.aws.amazon.com", "docs.microsoft.com", "cloud.google.com"]
+
+    options:
+      authority_weight: 0.8
+      extract_code_examples: true
+      preserve_diagrams: true
+
+  # Research papers and whitepapers
+  research_papers:
+    name: "Security Research Papers"
+    description: "Academic and industry research papers"
+    icon: "📚"
+
+    pipeline:
+      extractor: "pymupdf_extractor"
+      processor: "academic_processor"
+      chunking:
+        strategy: "semantic"
+        similarity_threshold: 0.5
+        chunk_size: 1500
+        min_chunk_size: 200
+        preserve_citations: true
+      enrichers: ["citation_enricher", "author_enricher", "methodology_enricher"]
+
+    storage:
+      primary: "vector_store"
+      secondary: ["research_graph"]
+
+    protocols: ["file", "https"]
+    mime_types: ["application/pdf"]
+
+    options:
+      authority_weight: 0.7
+      extract_bibliography: true
+      identify_methodologies: true
+
+  # Code repositories for security tools
+  security_tools:
+    name: "Security Tools & Scripts"
+    description: "Open source security tools and implementation examples"
+    icon: "🛠️"
+
+    pipeline:
+      extractor: "git_extractor"
+      processor: "code_processor"
+      chunking:
+        strategy: "code"
+        language: "python"
+        respect_boundaries: ["function", "class", "module"]
+        chunk_size: 2000
+        include_context: true
+        extract_docstrings: true
+      enrichers: ["ast_enricher", "security_pattern_enricher", "dependency_enricher"]
+
+    storage:
+      primary: "graph_store"
+      secondary: ["vector_store"]
+
+    protocols: ["git", "github"]
+    repositories: ["security-tools/*", "owasp/*", "nist-*"]
+
+    options:
+      authority_weight: 0.6
+      include_tests: true
+      analyze_vulnerabilities: true
+
+  # Internal knowledge and meeting notes
+  internal_security_knowledge:
+    name: "Internal Security Knowledge"
+    description: "Internal security meetings, decisions, and documentation"
+    icon: "🏢"
+
+    pipeline:
+      extractor: "file_extractor"
+      processor: "internal_processor"
+      chunking:
+        strategy: "recursive"
+        chunk_size: 800
+        overlap: 100
+        separators: ["\n## ", "\n- ", "\n\n"]
+        detect_meeting_sections: true
+      enrichers: ["attendee_enricher", "decision_enricher", "action_item_enricher"]
+
+    storage:
+      primary: "vector_store"
+      secondary: ["organizational_graph"]
+
+    protocols: ["file", "sharepoint"]
+
+    options:
+      authority_weight: 1.0  # Highest trust for internal decisions
+      extract_decisions: true
+      track_action_items: true
+      identify_stakeholders: true
+
+# =============================================================================
+# EXPERT-SPECIFIC CHUNKING PREFERENCES
+# =============================================================================
+
+expert_chunking_preferences:
+  security_architect:
+    description: "Security architecture and design expert"
+    preferred_strategies:
+      - semantic      # For coherent architecture concepts
+      - code          # For technical implementations
+    chunk_size: 1800
+    overlap: 200
+    context_window: 3
+    focus_areas:
+      - "threat_models"
+      - "security_patterns"
+      - "compliance_frameworks"
+      - "risk_assessments"
+
+    source_weights:
+      security_documentation: 0.9
+      technical_guides: 0.8
+      research_papers: 0.7
+      security_tools: 0.8
+
+  compliance_specialist:
+    description: "Compliance and regulatory expert"
+    preferred_strategies:
+      - recursive     # For structured compliance documents
+      - semantic      # For related requirements
+    chunk_size: 1500
+    overlap: 250
+    preserve_sections: true
+    focus_areas:
+      - "regulatory_requirements"
+      - "audit_procedures"
+      - "compliance_controls"
+      - "risk_frameworks"
+
+    source_weights:
+      security_documentation: 1.0
+      research_papers: 0.6
+      internal_security_knowledge: 0.9
+
+  incident_responder:
+    description: "Security incident response expert"
+    preferred_strategies:
+      - sentence      # For clear action steps
+      - code          # For response scripts
+    chunk_size: 1000
+    overlap: 100
+    preserve_procedures: true
+    focus_areas:
+      - "incident_procedures"
+      - "threat_indicators"
+      - "response_playbooks"
+      - "forensic_techniques"
+
+    source_weights:
+      security_tools: 0.9
+      technical_guides: 0.8
+      internal_security_knowledge: 0.9
+
+# =============================================================================
+# STORAGE BACKEND CONFIGURATION
+# =============================================================================
+
+storage_backends:
+  # Primary vector store for semantic search
+  vector_store:
+    type: "vector"
+    implementation: "chromadb"
+    configuration:
+      persist_directory: "/domains/cloud-security/knowledge/.chromadb"
+      collection_prefix: "cloud_security"
+      embedding_model: "sentence-transformers/all-mpnet-base-v2"
+      distance_metric: "cosine"
+      index_params:
+        ef_construction: 200
+        m: 16
+
+    collections:
+      - name: "security_documentation"
+        embedding_model: "sentence-transformers/all-mpnet-base-v2"
+      - name: "technical_guides"
+        embedding_model: "sentence-transformers/all-MiniLM-L6-v2"  # Faster for technical content
+      - name: "code_snippets"
+        embedding_model: "microsoft/codebert-base"  # Code-specific embeddings
+
+  # Knowledge graph for relationships
+  graph_store:
+    type: "graph"
+    implementation: "neo4j"
+    configuration:
+      uri: "bolt://localhost:7687"
+      database: "cloud_security"
+      auth:
+        username_env: "NEO4J_USERNAME"
+        password_env: "NEO4J_PASSWORD"
+
+    node_types:
+      - "SecurityControl"
+      - "ThreatModel"
+      - "ComplianceFramework"
+      - "SecurityTool"
+      - "Vulnerability"
+
+    relationship_types:
+      - "IMPLEMENTS"
+      - "MITIGATES"
+      - "REQUIRES"
+      - "RELATES_TO"
+      - "PART_OF"
+
+  # Specialized stores
+  vendor_knowledge_graph:
+    type: "graph"
+    implementation: "networkx"
+    configuration:
+      persist_directory: "/domains/cloud-security/knowledge/.vendor_graph"
+      focus: "vendor_relationships"
+
+# =============================================================================
+# RAG WORKFLOW CONFIGURATIONS
+# =============================================================================
+
+rag_workflows:
+  # Basic semantic search
+  semantic_search:
+    name: "Basic Semantic Search"
+    description: "Simple vector similarity search"
+    steps:
+      - type: "vector_search"
+        backend: "vector_store"
+        parameters:
+          top_k: 20
+          similarity_threshold: 0.7
+      - type: "rerank"
+        model: "cross-encoder/ms-marco-MiniLM-L-6-v2"
+        top_k: 10
+
+  # Hybrid search combining vector and keyword
+  hybrid_search:
+    name: "Hybrid Vector + Keyword Search"
+    description: "Combines semantic similarity with keyword matching"
+    steps:
+      - type: "vector_search"
+        backend: "vector_store"
+        parameters:
+          top_k: 15
+          similarity_threshold: 0.6
+      - type: "keyword_search"
+        backend: "full_text_index"
+        parameters:
+          top_k: 15
+      - type: "fusion"
+        strategy: "reciprocal_rank_fusion"
+        parameters:
+          k: 60
+      - type: "rerank"
+        top_k: 10
+
+  # Graph-enhanced retrieval
+  graph_enhanced:
+    name: "Graph-Enhanced Retrieval"
+    description: "Uses knowledge graph relationships"
+    steps:
+      - type: "vector_search"
+        backend: "vector_store"
+        parameters:
+          top_k: 10
+      - type: "graph_expansion"
+        backend: "graph_store"
+        parameters:
+          max_depth: 2
+          relationship_types: ["RELATES_TO", "IMPLEMENTS"]
+          expansion_factor: 3
+      - type: "relevance_filter"
+        threshold: 0.5
+      - type: "diversify"
+        algorithm: "mmr"
+        lambda: 0.7
+
+  # Expert-specific retrieval
+  expert_context_search:
+    name: "Expert Context-Aware Search"
+    description: "Tailors results based on expert preferences"
+    steps:
+      - type: "expert_query_expansion"
+        expand_with_terminology: true
+        expert_focus_areas: true
+      - type: "weighted_vector_search"
+        backend: "vector_store"
+        parameters:
+          use_expert_weights: true
+          top_k: 20
+      - type: "expert_filter"
+        filter_by_authority: true
+        min_authority: 0.6
+      - type: "context_rerank"
+        consider_expert_preferences: true
+        top_k: 10
+
+# =============================================================================
+# PROCESSING PERFORMANCE CONFIGURATION
+# =============================================================================
+
+processing_config:
+  # Parallel processing settings
+  concurrency:
+    max_workers: 8
+    batch_size: 50
+    memory_limit: "4GB"
+    timeout_per_source: 300  # 5 minutes
+
+  # Caching strategy
+  caching:
+    enable_source_cache: true
+    cache_duration: "24h"
+    cache_directory: "/domains/cloud-security/cache"
+    max_cache_size: "10GB"
+
+  # Error handling
+  error_handling:
+    max_retries: 3
+    retry_backoff: 2.0
+    skip_on_error: false
+    log_errors: true
+
+  # Quality control
+  quality_control:
+    min_chunk_quality: 0.6
+    deduplicate_chunks: true
+    similarity_threshold: 0.9
+    validate_extractions: true
+
+# =============================================================================
+# MONITORING AND ALERTING
+# =============================================================================
+
+monitoring:
+  metrics:
+    collection_interval: "5m"
+    retention_period: "30d"
+
+    performance_metrics:
+      - "processing_throughput"
+      - "chunk_generation_rate"
+      - "error_rate_by_source_type"
+      - "memory_usage"
+      - "cache_hit_ratio"
+
+    quality_metrics:
+      - "average_chunk_quality"
+      - "content_coverage"
+      - "duplicate_detection_rate"
+      - "expert_satisfaction_score"
+
+  alerts:
+    high_error_rate:
+      threshold: 0.15
+      action: "fallback_to_simpler_chunking"
+      notification: "slack_security_team"
+
+    low_quality_chunks:
+      threshold: 0.5
+      action: "review_chunking_strategy"
+      notification: "email_admin"
+
+    processing_delays:
+      threshold: "10m"
+      action: "scale_processing_workers"
+      notification: "pagerduty"
+
+# =============================================================================
+# EXAMPLE USAGE SCENARIOS
+# =============================================================================
+
+usage_scenarios:
+  # Scenario 1: New security framework analysis
+  analyze_new_framework:
+    description: "Analyze a new security framework document"
+    source_type: "security_documentation"
+    processing_pipeline: "comprehensive_documents"
+    expert_context: "compliance_specialist"
+    expected_outputs:
+      - "framework_summary"
+      - "compliance_requirements"
+      - "implementation_recommendations"
+
+  # Scenario 2: Threat intelligence research
+  threat_intelligence:
+    description: "Process threat intelligence reports"
+    source_type: "research_papers"
+    processing_pipeline: "threat_analysis"
+    expert_context: "security_architect"
+    expected_outputs:
+      - "threat_indicators"
+      - "attack_patterns"
+      - "mitigation_strategies"
+
+  # Scenario 3: Tool evaluation
+  security_tool_evaluation:
+    description: "Evaluate open source security tools"
+    source_type: "security_tools"
+    processing_pipeline: "code_intelligence"
+    expert_context: "incident_responder"
+    expected_outputs:
+      - "tool_capabilities"
+      - "implementation_complexity"
+      - "integration_requirements"
+
+# =============================================================================
+# VALIDATION AND TESTING
+# =============================================================================
+
+validation:
+  # Automated validation rules
+  rules:
+    - name: "chunk_size_validation"
+      condition: "chunk_size >= 50 and chunk_size <= 5000"
+      error_message: "Chunk size must be between 50 and 5000 characters"
+
+    - name: "overlap_validation"
+      condition: "overlap < chunk_size * 0.5"
+      error_message: "Overlap cannot exceed 50% of chunk size"
+
+    - name: "similarity_threshold_validation"
+      condition: "similarity_threshold >= 0.0 and similarity_threshold <= 1.0"
+      error_message: "Similarity threshold must be between 0.0 and 1.0"
+
+  # Test cases
+  test_cases:
+    - name: "nist_framework_processing"
+      source: "https://www.nist.gov/cyberframework"
+      expected_chunks: 150
+      expected_processing_time: 120  # seconds
+      quality_threshold: 0.8
+
+    - name: "owasp_top10_analysis"
+      source: "https://owasp.org/www-project-top-ten/"
+      expected_chunks: 50
+      expected_relationships: 25
+      coverage_threshold: 0.9
+
+# =============================================================================
+# DEPLOYMENT CONFIGURATION
+# =============================================================================
+
+deployment:
+  environment: "production"
+
+  # Resource requirements
+  resources:
+    cpu: "8 cores"
+    memory: "16GB"
+    storage: "500GB"
+    gpu: false  # Not required for current setup
+
+  # Service dependencies
+  dependencies:
+    - "chromadb"
+    - "neo4j"
+    - "redis"  # For caching
+
+  # Backup and recovery
+  backup:
+    enabled: true
+    schedule: "daily_2am"
+    retention: "30d"
+    destinations:
+      - "s3://semops-backups/cloud-security/"
+
+  # Security settings
+  security:
+    ssl_enabled: true
+    api_authentication: true
+    audit_logging: true
+    data_encryption: true

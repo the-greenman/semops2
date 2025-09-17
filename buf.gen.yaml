@@ -1,0 +1,67 @@
+# SemOps2 Protobuf Code Generation Configuration
+# This file controls how protobuf schemas are converted to all interface formats
+
+version: v2
+
+# Managed mode for consistent imports and naming
+managed:
+  enabled: true
+  override:
+    - file_option: cc_enable_arenas
+      value: true
+    - file_option: java_multiple_files
+      value: true
+    - file_option: java_string_check_utf8
+      value: true
+    - file_option: java_package_prefix
+      value: "com.semops.v2"
+    - file_option: go_package_prefix
+      value: "github.com/semops/semops2/gen/go"
+  disable:
+    - module: buf.build/googleapis/googleapis
+
+# Code generation plugins
+inputs:
+  - directory: schema
+plugins:
+  # =====================================
+  # Core gRPC Code Generation
+  # =====================================
+
+  # Python gRPC - for CLI and internal services
+  - remote: buf.build/protocolbuffers/python:v28.2
+    out: src/semops/generated
+
+  # Python gRPC services
+  - remote: buf.build/grpc/python:v1.66.1
+    out: src/semops/generated
+
+  # Python validation code is handled by the protovalidate library
+  # No separate plugin needed - use standard Python protobuf generation
+
+  # =====================================
+  # API Specification Generation
+  # =====================================
+
+  # OpenAPI 2.0 specifications for REST APIs
+  - remote: buf.build/grpc-ecosystem/openapiv2:v2.22.0
+    out: generated/api/openapi
+    opt:
+      - allow_merge=true
+      - merge_file_name=api
+
+  # =====================================
+  # Documentation Generation
+  # =====================================
+
+  # HTML documentation
+  - remote: buf.build/community/pseudomuto-doc:v1.5.1
+    out: generated/docs/html
+    opt:
+      - html,index.html
+
+  # Markdown documentation
+  - remote: buf.build/community/pseudomuto-doc:v1.5.1
+    out: generated/docs/markdown
+    opt:
+      - markdown,docs.md
