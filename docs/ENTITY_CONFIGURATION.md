@@ -557,7 +557,7 @@ Feature: Execute multi-expert analysis workflows
   So that I can apply a consistent methodology involving multiple AI experts
 
   Background:
-    Given a workflow "define_domain_strategy" is defined in "config/workflows.yaml"
+    Given a workflow "define_domain_strategy" is defined in ".semops/config/workflows.yaml"
     And it has two steps using experts "boundary_definer" and "tension_analyzer"
     And a domain with ID "DOM-cloud-governance" exists
 

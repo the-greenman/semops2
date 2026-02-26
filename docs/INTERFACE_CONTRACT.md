@@ -65,9 +65,9 @@ After regeneration, inspect diffs for the generated directories. Do not edit gen
 
 ## Multi-Agent Collaboration Rules
 
-- Treat `schema/` and `docs/` as shared planning space; coordinate schema changes through PRs and migration notes.
+- Treat `schema/` and `docs/` as shared planning space; coordinate schema changes through PRs and ADR updates.
 - Agents implementing business logic or CLI features must not alter generated modules.
-- Contract-breaking changes (removing fields, renaming services) require a version bump and migration entry in `docs/MIGRATION_PLAN.md`.
+- Contract-breaking changes (removing fields, renaming services) require a version bump and explicit ADR/change note in docs.
 - Use contract tests as the first signal when subsystems drift from the protobuf definitions.
 
 ## Open Questions

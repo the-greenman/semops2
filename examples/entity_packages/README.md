@@ -55,6 +55,8 @@ entity_package_name/
 ### [policy/](policy/)
 **Purpose**: Develop organizational policies with AI assistance
 
+**Scope**: Optional collaborative-org extension package (not a required `semops.core` default)
+
 **Journey Stages**:
 1. Draft policy (human)
 2. AI enrichment (AI-assisted)
@@ -65,6 +67,8 @@ entity_package_name/
 
 ### [constitution/](constitution/)
 **Purpose**: Create foundational governing documents
+
+**Scope**: Optional collaborative-org extension package (not a required `semops.core` default)
 
 **Journey Stages**:
 1. Draft constitution (human)
@@ -306,7 +310,7 @@ entity_type:
 ```yaml
 # journey_definition.yaml
 entity_journey:
-  journey_id: "my_entity_creation"
+  journey_id: "my-entity-creation"
   entity_type: "org.myorg/my_entity"
   stages:
     - name: "draft_creation"

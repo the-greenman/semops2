@@ -1,0 +1,22 @@
+entity_types:
+  domain:
+    id_prefix: "DOM"
+    name_field: "domain_name"
+    slug_field: "domain_slug"
+    template: "domain.md.j2"
+    directory_name: "domain"
+    filename_pattern: "{entity_type}.md"
+    display_name: "Domain"
+    description: "Strategic business areas and market segments"
+    icon: "🏢"
+
+  project:
+    id_prefix: "PROJ"
+    name_field: "project_name"
+    slug_field: "project_slug"
+    template: "project.md.j2"
+    directory_name: "projects"
+    filename_pattern: "{entity_type}.md"
+    display_name: "Project"
+    description: "A specific initiative or project"
+    icon: "🚀"

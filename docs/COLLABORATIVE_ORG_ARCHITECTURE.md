@@ -16,7 +16,7 @@ This document defines the architecture for using SemOps2 to support collaborativ
 
 ### Design Principles
 
-1. **Transparent Operational Records** - All organizational activities captured in entity graph
+1. **Transparent Operational Records** - All organizational activities captured in canonical documents, with graph projections for traversal
 2. **Human-AI Collaboration** - AI assists, humans decide at every stage
 3. **Authority Hierarchy** - Different content types have different validity levels
 4. **Rapid Evolution** - Templates change frequently in early use without causing chaos
@@ -114,6 +114,23 @@ Implications of this hybrid model:
 - Write-path consistency is critical: document and graph updates must commit atomically or with reliable reconciliation.
 - Operational complexity is higher than a single-store model (indexing, sync jobs, repair tools).
 
+### Exploration Interface (No Export Required)
+
+Most browsing workflows should be read-only and scoped, not full-workspace export.
+
+Explore interface requirements:
+- Workspace overview (mission, constitution state, active domains, pending reviews)
+- Entity listing and entity detail views
+- Neighborhood traversal across relationships (depth-limited)
+- Authority-weighted search
+- Timeline of recent changes
+- Open-question views for unresolved governance/workflow issues
+
+Implementation approach:
+- Add a read-only `ExploreService` in the IDL as the browse-optimized read model.
+- Expose equivalent MCP browse tools for AI-mediated and CLI-mediated exploration.
+- Keep mutation operations in Entity Server; browsing never bypasses write invariants.
+
 ### Constitutional Evolution Practice
 
 - Create a bootstrap constitution early with minimal viable principles.
@@ -121,6 +138,18 @@ Implications of this hybrid model:
 - Use regular refinement cycles (domain/problem discoveries trigger constitutional review).
 - Ratify only when principles and authority boundaries are stable enough for enforcement.
 - After ratification, changes are managed as formal amendments with stronger review.
+- Maintain a versioned set of constitutional process templates (ratification, amendment, review cadence).
+- Accept that amendment process can itself evolve; govern this through explicit constitutional/policy decisions rather than hardcoded assumptions.
+- Keep the system flexible: meta-process detail may be documented and audited even when not fully enforced as rigid runtime logic.
+
+### Fine-Grained ADR Practice
+
+- Treat ADRs as aggregates of small, linked decisions rather than one large decision object.
+- Model a proposal as a decision bundle with cross-references among constituent decisions.
+- Link each constituent decision to specific target-document changes (line-level intent via structured diff/change-set references).
+- Preserve both views:
+  - the aggregated ADR narrative for humans
+  - the fine-grained decision/change graph for traceability and actor reasoning
 
 ## Entity-Journey Framework
 
@@ -134,7 +163,7 @@ semops domain create foo --name "Foo" --purpose "Bar"
 
 Journey-based creation:
 ```bash
-semops journey start domain_definition --name "Foo"
+semops journey start domain-definition --name "Foo"
 # Interactive multi-stage process with AI guidance
 ```
 
@@ -144,7 +173,7 @@ Every entity journey follows this pattern:
 
 ```yaml
 entity_journey:
-  journey_id: "entity_type_refinement"
+  journey_id: "entity-type-refinement"
   entity_type: "semops.core/entity_type"
   journey_type: "creation_refinement | extraction_refinement | evolution"
 
@@ -192,11 +221,30 @@ workflow.update_state(config, new_state)
 
 # Entity metadata
 entity.metadata["journey_state"] = {
-  "journey_id": "domain_definition",
+  "journey_id": "domain-definition",
   "completed_stages": ["draft_creation", "scope_clarification", ...],
   "final_state": {...}
 }
 ```
+
+### Workflow Ownership and Scope
+
+To keep orchestration concerns clear:
+
+1. **Journey definitions are per-entity and lifecycle-authoritative**
+   - Defined in `entity_packages/<entity>/journey_definition.yaml`
+   - Own stage sequencing, human checkpoints, and commit transitions
+   - Operate over flat root collections with relationship links (not nested entity directories)
+
+2. **Analysis workflows are reusable expert pipelines**
+   - Defined in `.semops/config/workflows.yaml`
+   - Reused across entities through `applicable_entity_types`
+   - May be invoked from journey stages or executed directly via CLI/API/MCP without a journey
+
+3. **RAG workflows are retrieval-only**
+   - Defined in `.semops/config/rag_workflows.yaml`
+   - Control retrieval/ranking/context assembly
+   - Do not own lifecycle transitions
 
 ## Modular Entity Packages
 
@@ -240,7 +288,7 @@ entity_type:
 ```yaml
 # journey_definition.yaml
 entity_journey:
-  journey_id: "domain_definition"
+  journey_id: "domain-definition"
   entity_type: "semops.core/domain"
 
   stages:
@@ -381,8 +429,8 @@ semops migrate rollback --to-version 1.0.0
 5. human_review → User approves/rejects (if strategy requires)
 6. apply_new_template → Render with v1.1.0 template
 7. validate_migration → Check all required fields present
-8. commit_changes → Save to entity graph
-9. restore_relationships → Re-establish graph connections
+8. commit_changes → Save canonical document revision
+9. update_projections → Rebuild or queue entity_graph/knowledge_graph/vector projection updates with reconciliation metadata
 ```
 
 ## Authority-Weighted Knowledge
@@ -438,7 +486,7 @@ Authority-weighted retrieval:
 ```yaml
 rag_workflows:
 
-  authority_weighted_search:
+  authority_weighted:
     description: "Prioritize authoritative sources in retrieval"
 
     retrieval_strategy: "hybrid"
@@ -492,7 +540,7 @@ AI agents use authority-weighted retrieval:
 ```
 ┌─────────────────────────────────────────────────────┐
 │ CLI                                                  │
-│ semops journey start domain_definition --name "Foo" │
+│ semops journey start domain-definition --name "Foo" │
 └─────────────────────────────────────────────────────┘
                      ↓
 ┌─────────────────────────────────────────────────────┐
@@ -532,7 +580,7 @@ from langgraph.checkpoint.memory import MemorySaver
 from semops.journeys import load_journey
 
 # Load journey definition
-journey = load_journey("domain_definition")
+journey = load_journey("domain-definition")
 
 # Convert to LangGraph workflow
 class JourneyState(TypedDict):
@@ -595,9 +643,9 @@ result = await app.ainvoke(initial_state, config=config)
 ### CLI Interaction
 
 ```bash
-$ semops journey start domain_definition --name "Security & Compliance"
+$ semops journey start domain-definition --name "Security & Compliance"
 
-🚀 Starting journey: domain_definition
+🚀 Starting journey: domain-definition
 📍 Stage: draft_creation
 
 What is the purpose of this domain?
@@ -692,7 +740,7 @@ semops relationship add holds_role ACT-founder-a ROL-founder
 semops relationship add holds_role ACT-founder-b ROL-founder
 
 # 4. Create bootstrap constitution through ratification journey
-semops journey start constitution_ratification --name "Founding Charter"
+semops journey start constitution-ratification --name "Founding Charter"
 # Interactive process with:
 # - Bootstrap v0.x draft (minimal principles, open questions)
 # - Context integration from domain/problem discovery (AI-assisted)
@@ -704,7 +752,7 @@ semops journey start constitution_ratification --name "Founding Charter"
 # Provenance: created_by_actor_id=ACT-founder-a (or ACT-founder-b)
 
 # 5. Create initial domains
-semops journey start domain_definition --name "Governance"
+semops journey start domain-definition --name "Governance"
 # Interactive process with:
 # - Scope clarification (AI-assisted)
 # - Resource identification (AI finds related entities)
@@ -714,7 +762,7 @@ semops journey start domain_definition --name "Governance"
 # Created: DOM-governance
 # Authority: HIGH (governance domain)
 
-semops journey start domain_definition --name "Operations"
+semops journey start domain-definition --name "Operations"
 # Created: DOM-operations
 # Authority: MEDIUM (operational domain)
 
@@ -727,7 +775,7 @@ semops meeting create founding-meeting \
 # Created: MTG-founding-meeting
 
 # 7. Extract decisions from meeting
-semops journey start decision_refinement MTG-founding-meeting
+semops journey start decision-refinement MTG-founding-meeting
 # Interactive process with:
 # - AI identifies potential decisions in transcription
 # - Human reviews, confirms, merges, splits
@@ -744,8 +792,8 @@ semops journey start decision_refinement MTG-founding-meeting
 # Each decision linked to MTG-founding-meeting
 
 # 8. One decision establishes a policy
-semops journey start policy_development --name "Access Control Policy"
-# Interactive process similar to domain_definition
+semops journey start policy-development --name "Access Control Policy"
+# Interactive process similar to domain-definition
 
 # Created: POL-access-control
 
@@ -918,7 +966,7 @@ $ semops migrate rollback --to-version 1.0.0
 
 ```bash
 # 1. Start decision journey from security meeting
-$ semops journey start decision_refinement MTG-security-review-q1
+$ semops journey start decision-refinement MTG-security-review-q1
 
 # 2. AI identifies potential decision
 📍 Stage: identify_decisions
@@ -1007,6 +1055,98 @@ Status: ready
 
 # Decision has highest authority backing (constitution)
 ```
+
+### Workflow 4: Self-Referential System Design (SemOps Designing SemOps)
+
+**Context**: The organization uses SemOps to evolve SemOps architecture and governance.
+
+```bash
+# 1. Create a domain for SemOps architecture stewardship
+semops journey start domain-definition --name "SemOps Architecture"
+# Created: DOM-semops-architecture
+
+# 2. Create a problem that captures current system tension
+semops problem create sync-complexity \
+  --name "Hybrid Source-of-Truth Complexity" \
+  --part-of DOM-semops-architecture
+# Created: PROB-sync-complexity
+
+# 3. Gather evidence as artefacts/conversations
+semops conversation create arch-review-2026-q1 \
+  --name "Architecture Review: Source of Truth" \
+  --part-of DOM-semops-architecture
+
+semops artefact create decision-record-hybrid-options \
+  --name "ADR: Hybrid vs Canonical Runtime Model" \
+  --part-of DOM-semops-architecture
+
+# 4. Run decision refinement based on meeting/conversation evidence
+semops journey start decision-refinement CONV-arch-review-2026-q1
+# Created: DEC-* set (small scoped decisions)
+# Example:
+#   DEC-canonical-runtime-source
+#   DEC-enable-projection-read-model
+#   DEC-defer-roundtrip-import
+
+# 4b. Aggregate small decisions into one ADR view
+semops adr create ADR-hybrid-architecture-q1 \
+  --decisions DEC-canonical-runtime-source,DEC-enable-projection-read-model,DEC-defer-roundtrip-import
+# Created: ADR-hybrid-architecture-q1 (decision bundle)
+
+# 5. Link decision to constitutional and policy updates
+semops relationship add references ADR-hybrid-architecture-q1 CONST-founding-charter
+semops journey start policy-development --name "System Evolution Policy"
+# Created: POL-system-evolution
+semops relationship add establishes DEC-canonical-runtime-source POL-system-evolution
+
+# 6. If scope/process changed, run constitutional amendment workflow
+semops journey start constitution-ratification --name "Founding Charter Amendment 2026-Q1"
+# Constitution state transitions: provisional -> ratified (with amendment log)
+
+# 6b. Link specific decisions to specific constitutional/policy diffs
+semops change link \
+  --decision-id DEC-canonical-runtime-source \
+  --target CONST-founding-charter \
+  --change-ref CHG-const-2026-q1-001
+semops change link \
+  --decision-id DEC-enable-projection-read-model \
+  --target POL-system-evolution \
+  --change-ref CHG-pol-2026-q1-004
+
+# 7. Verify actor boundary compliance for automation proposals
+semops actor permission-check \
+  --actor-id ACT-assistant-007 \
+  --action create_decision \
+  --context authority_level=HIGH,affects_constitution=true
+# Expected: needs_approval or forbidden, with policy references
+```
+
+Expected outcome:
+- Domains and problems produce traceable architectural decisions.
+- Constitution remains the boundary and process authority.
+- Actors can propose and analyze, but system evolution remains governance-bounded.
+- ADR proposals are traceable bundles of small decisions with explicit document-change links.
+
+### Self-Referential Validation Checklist
+
+Use this checklist to validate that the architecture can safely design itself:
+
+1. **Constitutional Grounding**
+   - Every architectural decision references constitutional principles or approved amendment path.
+2. **Problem-to-Decision Traceability**
+   - Each major architecture decision links back to at least one explicit problem entity.
+3. **Actor Attribution Completeness**
+   - All mutations in system-design workflows carry valid actor attribution.
+4. **Boundary Enforcement**
+   - High-authority or constitutional-impact actions from software actors require human approvals.
+5. **Policy Materialization**
+   - Approved architectural decisions produce policy/process updates, not only discussion artefacts.
+6. **Evolution Transparency**
+   - Timeline/audit view can reconstruct who changed system structure, when, and why.
+7. **Reversibility**
+   - System-level changes have rollback/migration strategy and tested recovery path.
+8. **Comprehensibility Across Actor Types**
+   - Human and non-human actors can discover current goals, boundaries, and allowed actions via Explore + MCP interfaces.
 
 ## Summary
 

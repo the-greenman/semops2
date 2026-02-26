@@ -20,6 +20,13 @@ Mission framing:
 - SemOps2 is a tool for democracy at micro scale.
 - It aims to influence democracy at macro scale by cultivating repeatable foundational practices.
 
+Self-referential requirement:
+- SemOps2 should be usable to design and evolve SemOps2 itself.
+- Domains and problems should generate architectural decisions.
+- The constitution must hold scope/process boundaries while actors evolve the system within those boundaries.
+- Proposals (including ADRs) should be representable as aggregates of fine-grained decisions.
+- Decisions should link to explicit target-document changes (diff/change-set references), not only high-level narrative.
+
 The system develops structured context and intent that allows diverse intelligences to:
 - Understand the purpose and boundaries of their operational environment
 - Discover their role within larger collaborative structures
@@ -39,7 +46,7 @@ Designed for human-only collaboration:
 
 ### SemOps2 Approach
 Explicit semantic architecture:
-- **Structured context** - All operational context in queryable graph
+- **Structured context** - Canonical operational context in documents with queryable graph projections
 - **Clear boundaries** - Domain scopes, relationship types, authority levels
 - **Transparent authority** - Constitutional hierarchy with weights
 - **Intent preservation** - Decision rationale, assumptions, outcomes
@@ -60,9 +67,11 @@ MCP Server (Semantic Interface)
    ↓
 Entity Server (Validation + Policy Boundary)
    ↓
-Entity Graph (Operational Structure)
+Canonical Documents (Operational Record)
    ↓
-Knowledge Graph (Semantic Context)
+Entity Graph (Derived Structure)
+   ↓
+Knowledge Graph (Derived Semantic Context)
    ↓
 Vector Store (Weighted Knowledge)
 ```
@@ -909,7 +918,7 @@ Actors are modeled as:
 
 ### Relationship to Entities
 
-- Actors can be represented in the entity graph for discoverability and relationships.
+- Actors can be represented in the entity graph projection for discoverability and relationships.
 - But actor authorization state is not inferred from generic entity fields alone.
 - Runtime permission decisions come from policy evaluation over:
   - actor metadata
@@ -943,7 +952,7 @@ A well-functioning semantic architecture enables:
 
 ## Conclusion
 
-SemOps2 is fundamentally a **semantic architecture system** for multi-intelligence collaboration. The entity graph, knowledge repository, and authority hierarchy are not just organizational tools—they are the **shared semantic space** where different forms of intelligence can discover context, understand intent, navigate boundaries, and collaborate effectively.
+SemOps2 is fundamentally a **semantic architecture system** for multi-intelligence collaboration. Canonical documents, graph/vector projections, and authority hierarchy together form the **shared semantic space** where different forms of intelligence can discover context, understand intent, navigate boundaries, and collaborate effectively.
 
 The MCP server is the **interface** through which actors access this semantic architecture, enabling them to be full participants in organizational governance while maintaining human oversight and constitutional principles.
 

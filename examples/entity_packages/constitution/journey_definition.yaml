@@ -1,7 +1,7 @@
 # Constitution Ratification Journey
 
 entity_journey:
-  journey_id: "constitution_ratification"
+  journey_id: "constitution-ratification"
   entity_type: "org.collaborative/constitution"
   journey_type: "creation_refinement"
   description: "Bootstrap with a minimal draft constitution, then refine and ratify as understanding improves"

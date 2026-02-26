@@ -4,6 +4,8 @@
 
 SemOps2's knowledge repository provides a generic, extensible framework for managing diverse knowledge sources and retrieval methods. Instead of the current hardcoded external/internal source types and single ChromaDB vector store, the new system supports unlimited source types, multiple storage backends (vector, graph, hybrid), and configurable processing pipelines.
 
+Persistence invariant (ADR-0001): canonical operational records remain markdown + frontmatter documents. Knowledge graph, entity graph, and vector stores are derived projections for retrieval and traversal, maintained synchronously or via durable queued reconciliation.
+
 ## Current RAG System Problems
 
 ### Hardcoded Source Types

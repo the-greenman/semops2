@@ -52,6 +52,12 @@ Primary near-term use case is post-human democratic organizations with human dec
 ### 11. **Micro-to-Macro Democracy Mission** ✅
 Use micro-scale democratic practice (teams/organizations) as the development ground for practices that can improve macro-scale democracy.
 
+### 12. **Self-Referential System Design** ✅
+SemOps is used to design SemOps: architecture domains/problems produce decisions, constitution defines boundaries, and actor-driven evolution remains governance-bounded.
+
+### 13. **Fine-Grained ADR + Decision-to-Diff Traceability** ✅
+Major proposals are modeled as bundles of small decisions, and each decision can link to explicit target-document change references.
+
 ## Revised Understanding: Modular Entity-Journey Units
 
 Each entity type is a **self-contained package**:

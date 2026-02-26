@@ -75,6 +75,7 @@ The `ConfigManager` loads configuration in the following order, with later layer
 
 1.  **Built-in Defaults** - Embedded in the tool itself
     *   Core entity types under `semops.core` namespace (domain, role, meeting, decision, conversation, artefact)
+    *   Optional collaborative-org extensions (e.g. policy, constitution) are package-level additions, not required core defaults
     *   Default source types and processing pipelines
     *   Standard expert types and workflows
     *   Basic storage backend configurations
@@ -104,6 +105,7 @@ The `ConfigManager` loads configuration in the following order, with later layer
     ├── entity_types.yaml      # Entity type definitions
     ├── source_types.yaml      # Knowledge source processing
     ├── expert_types.yaml      # AI expert configurations
+    ├── workflows.yaml         # Multi-step expert/workflow orchestration
     ├── storage_backends.yaml  # Vector/graph store configs
     ├── rag_workflows.yaml     # Retrieval workflows
     └── pipeline_configurations.yaml  # Processing pipelines
@@ -113,9 +115,28 @@ The `ConfigManager` loads configuration in the following order, with later layer
     ```
     .semops/templates/
     ├── domain.md.j2           # Custom domain template
-    ├── problem.md.j2          # Custom problem template
-    └── solution.md.j2         # Custom solution template
+    ├── meeting.md.j2          # Custom meeting template
+    └── decision.md.j2         # Custom decision template
     ```
+
+### Workflow Ownership Model
+
+To avoid ambiguity between lifecycle orchestration and retrieval logic, SemOps2 separates workflow scopes:
+
+1. **Entity journeys (authoritative for lifecycle):**
+   - Defined per entity package in `entity_packages/<entity>/journey_definition.yaml`
+   - Own creation/refinement/evolution stage flow, human checkpoints, and commit transitions
+
+2. **Analysis workflows (reusable orchestration library):**
+   - Defined globally in `.semops/config/workflows.yaml`
+   - Reusable multi-step expert pipelines that can be invoked directly by CLI/API/MCP commands or from journey stages
+   - Scoped with `applicable_entity_types`
+
+3. **RAG workflows (retrieval only):**
+   - Defined in `.semops/config/rag_workflows.yaml`
+   - Control retrieval/ranking/context assembly only (no lifecycle state transitions)
+
+When both a journey and a reusable analysis workflow exist for an entity, the journey remains the lifecycle authority and may call analysis workflows as subordinate steps. Global workflows remain first-class and executable without a journey when lifecycle orchestration is not required.
 
 ### Configuration Examples
 
@@ -632,26 +653,26 @@ class EntityService(services_pb2_grpc.EntityServiceServicer):
 
 To orchestrate complex methodologies that require multiple specialized AI agents, the system uses a `WorkflowEngine`.
 
-1.  **Specialized Experts**: First, individual experts are defined in `config/experts.yaml`, each with a unique persona and skill.
+1.  **Specialized Experts**: First, individual experts are defined in `.semops/config/expert_types.yaml`, each with a unique persona and skill.
 
     ```yaml
-    # in config/experts.yaml
-    experts:
+    # in .semops/config/expert_types.yaml
+    expert_types:
       boundary_definer:
         persona: "You are a business strategist specializing in market segmentation..."
       tension_analyzer:
         persona: "You are a systems thinker who identifies underlying conflicts..."
     ```
 
-2.  **Configurable Workflows**: Next, a multi-step workflow is defined in `config/workflows.yaml`. Each step specifies an expert, a task, and how its output should be handled.
+2.  **Configurable Workflows**: Next, a multi-step workflow is defined in `.semops/config/workflows.yaml`. Each step specifies an expert, a task, and how its output should be handled.
 
     ```yaml
-    # in config/workflows.yaml
+    # in .semops/config/workflows.yaml
     workflows:
       define_domain_strategy:
         name: "Define Domain Strategy"
         description: "A two-step process for defining domain boundaries and tensions."
-        applicable_entity_types: ["domain"] # Restricts this workflow to 'domain' entities
+        applicable_entity_types: ["semops.core/domain"] # Restricts this workflow to domain entities
         steps:
           - name: "Define Boundaries"
             expert: "boundary_definer"
@@ -1242,10 +1263,12 @@ SemOps2 uses **two distinct graph stores** with different schemas, owners, and q
 | **Source sharing** | N/A — knowledge graph does not drive inheritance | `share_sources: true` on relationship types drives source resolution |
 
 **Rules:**
-1. `KnowledgeService` writes to and reads from `knowledge_graph` only. It never queries `entity_graph` directly.
-2. `EntityService` writes to and reads from `entity_graph` only. It never queries `knowledge_graph` directly.
-3. When a `KnowledgeService` retrieval needs entity context (e.g. "find sources relevant to this decision"), it receives the `EntityID` as a scope parameter and resolves the attached `entity_ids` from `KnowledgeSource` records — it does not traverse `entity_graph`.
-4. The `graph_enhanced` RAG workflow expands through `knowledge_graph`. The `entity_graph_traversal` workflow expands through `entity_graph` to gather related entity IDs, then scopes a vector search.
+1. **Canonical write path is file-first**: `EntityService` persists canonical `EntityDocument` markdown/frontmatter first.
+2. `knowledge_graph` and `entity_graph` are **derived projections** maintained from canonical documents (synchronous or queued with guaranteed reconciliation).
+3. `KnowledgeService` reads/writes only the `knowledge_graph` projection. It never traverses `entity_graph` directly.
+4. `EntityService` manages `entity_graph` projection updates for relationship traversal use cases, but `entity_graph` is not the canonical source of truth.
+5. When a `KnowledgeService` retrieval needs entity context (e.g. "find sources relevant to this decision"), it receives the `EntityID` as a scope parameter and resolves attached `entity_ids` from `KnowledgeSource` records rather than traversing `entity_graph`.
+6. The `graph_enhanced` RAG workflow expands through `knowledge_graph`. The `entity_graph_traversal` workflow expands through `entity_graph` to gather related entity IDs, then scopes a vector search.
 
 **Storage backend config keys** (in `storage_backends.yaml`):
 
@@ -1308,38 +1331,6 @@ Resolution step (3) uses `share_sources` to decide whether to include sources fr
 - If multiple root types exist, the `ContextDetector` captures the nearest root instance for lineage calculation.
 
 This model preserves today’s domain-root behavior while enabling fine-grained attachments, inheritance control, and cross-domain knowledge graphs when needed.
-
-## Migration Strategy from SemOps v1
-
-### Phase 1: Configuration and Models
-1. Create entity type configuration system
-2. Implement entity models and validation
-3. Build template engine with Jinja2
-4. Create configuration loader and validator
-
-### Phase 2: Generic Services
-1. Implement generic EntityService
-2. Add context detection and auto-resolution
-3. Build template-based document generation
-4. Add file system utilities and frontmatter handling
-
-### Phase 3: Dynamic CLI
-1. Create dynamic command generation
-2. Add output formatters and table functions
-3. Implement context-aware parameter resolution
-4. Add error handling with helpful hints
-
-### Phase 4: Testing and Migration
-1. Comprehensive unit tests for all components
-2. Integration tests with real templates and data
-3. Performance testing with large entity sets
-4. Migration scripts from SemOps v1 data structures
-
-### Phase 5: Extension and Enhancement
-1. Add new entity types through configuration
-2. Enhanced template features and validation
-3. Advanced context detection and relationship mapping
-4. API layer for external integrations
 
 ## Benefits of Generic Architecture
 

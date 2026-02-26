@@ -44,6 +44,7 @@ This directory contains the complete architecture and implementation plan for us
 ### Planning Documents
 - **[PLANNING_COMPLETE.md](PLANNING_COMPLETE.md)** - Consolidation summary
 - **[docs/PLANNING_AUDIT.md](docs/PLANNING_AUDIT.md)** - Design decisions and rationale
+- **[docs/decisions/](docs/decisions/)** - Auditable architecture decision records (ADRs)
 
 ## 📦 Entity Packages
 
@@ -173,7 +174,7 @@ See [PLANNING_COMPLETE.md](PLANNING_COMPLETE.md) for detailed roadmap.
 
 ## 🎯 Design Principles
 
-1. **Transparent Operational Records** - All activities captured in entity graph
+1. **Transparent Operational Records** - All activities captured in canonical documents, with graph/vector indexes as derived projections
 2. **Human-AI Collaboration** - AI assists, humans decide
 3. **Authority Hierarchy** - Different sources have different validity
 4. **Rapid Evolution** - Templates change without chaos

@@ -240,6 +240,28 @@ enum SyncStatus {
   SYNC_STATUS_COMPLETED = 2;
   SYNC_STATUS_FAILED = 3;
 }
+
+// Aggregated proposal/ADR composed of multiple fine-grained decisions.
+message DecisionBundle {
+  string bundle_id = 1; // e.g. ADR-hybrid-architecture-q1
+  string bundle_type = 2; // e.g. "adr", "proposal"
+  string title = 3;
+  repeated string decision_ids = 4; // ordered list of constituent DEC-* items
+  string status = 5; // draft | approved | superseded
+  string rationale_summary = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+// Link between a decision and a concrete document change-set reference.
+message DecisionChangeLink {
+  string link_id = 1;
+  string decision_id = 2; // DEC-*
+  EntityID target_entity_id = 3; // CONST-*, POL-*, etc.
+  string change_ref = 4; // CHG-* identifier from a diff/change-set registry
+  string change_summary = 5;
+  google.protobuf.Timestamp linked_at = 6;
+}
 ```
 
 Control-plane enforcement policy (planned):
@@ -338,23 +360,14 @@ package semops.v1;
 
 import "semops/schema/v1/core.proto";
 
-// Knowledge source types
-enum SourceType {
-  SOURCE_TYPE_UNSPECIFIED = 0;
-  SOURCE_TYPE_WEB_CONTENT = 1;
-  SOURCE_TYPE_DOCUMENTS = 2;
-  SOURCE_TYPE_API_FEEDS = 3;
-  SOURCE_TYPE_CODE_REPOS = 4;
-  SOURCE_TYPE_MEDIA_CONTENT = 5;
-  SOURCE_TYPE_INTERNAL_KNOWLEDGE = 6;
-  SOURCE_TYPE_REALTIME_FEEDS = 7;
-  SOURCE_TYPE_ENTERPRISE_SYSTEMS = 8;
-}
+// Knowledge source types are configuration-driven (open string keys),
+// e.g. "web_content", "documents", "api_feeds".
+// Valid values are resolved from runtime config, not a closed protobuf enum.
 
 // Knowledge source definition
 message KnowledgeSource {
   string source_id = 1;
-  SourceType source_type = 2;
+  string source_type = 2;
   string name = 3;
   string url = 4;
   google.protobuf.Struct config = 5;
@@ -376,10 +389,10 @@ enum ProcessingStatus {
 message RetrievalRequest {
   string query = 1 [(validate.rules).string.min_len = 1];
   EntityID context_entity_id = 2; // Optional context
-  ExpertType expert_type = 3; // Optional expert context
+  string expert_type = 3; // Optional expert context (config-defined key)
   string workflow = 4; // RAG workflow to use
   int32 max_results = 5 [(validate.rules).int32 = {gte: 1, lte: 100}];
-  repeated SourceType source_types = 6;
+  repeated string source_types = 6;
   google.protobuf.Struct parameters = 7;
 }
 
@@ -395,7 +408,7 @@ message RetrievalResponse {
 message KnowledgeResult {
   string content = 1;
   string source_id = 2;
-  SourceType source_type = 3;
+  string source_type = 3;
   float relevance_score = 4;
   google.protobuf.Struct metadata = 5;
   string citation_format = 6; // e.g., "[[SRC-Title-hash]]"
@@ -404,9 +417,131 @@ message KnowledgeResult {
 // Source reference for citations
 message KnowledgeSourceRef {
   string source_id = 1;
-  SourceType source_type = 2;
+  string source_type = 2;
   string citation = 3;
   string url = 4;
+}
+```
+
+### Explore Read-Model Schema (Planned)
+
+Browsing should be first-class without requiring export. The explore schema provides read-only projections for humans and AI-mediated interfaces.
+
+```protobuf
+// schema/semops/v1/explore.proto (planned)
+syntax = "proto3";
+package semops.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+import "semops/v1/core.proto";
+
+message ExploreSelector {
+  // Optional scope constraints
+  repeated string entity_types = 1;   // e.g. "semops.core/domain"
+  repeated string domain_ids = 2;     // e.g. "DOM-governance"
+  repeated string statuses = 3;       // e.g. "active", "draft"
+  repeated string authority_levels = 4;
+}
+
+message EntitySummary {
+  EntityID entity_id = 1;
+  string name = 2;
+  string status = 3;
+  string authority_level = 4;
+  string last_change_summary = 5;
+  google.protobuf.Timestamp updated_at = 6;
+}
+
+message BrowseOverviewRequest {
+  string actor_id = 1 [(buf.validate.field).string.pattern = "^ACT-[a-z0-9-]+$"];
+  ExploreSelector selector = 2;
+  bool include_pending_reviews = 3;
+  bool include_recent_changes = 4;
+}
+
+message BrowseOverviewResponse {
+  string workspace_name = 1;
+  string mission_summary = 2;
+  EntityID constitution_id = 3;
+  string constitution_state = 4;
+  repeated EntitySummary active_domains = 5;
+  repeated EntitySummary pending_reviews = 6;
+  repeated TimelineItem recent_changes = 7;
+}
+
+message GetEntityViewRequest {
+  EntityID entity_id = 1;
+  string actor_id = 2 [(buf.validate.field).string.pattern = "^ACT-[a-z0-9-]+$"];
+}
+
+message EntityView {
+  EntitySummary summary = 1;
+  string purpose = 2;
+  string rationale = 3;
+  repeated string policy_references = 4;
+  repeated EntityID related_entities = 5;
+  string current_journey_state = 6;
+}
+
+message GetEntityViewResponse {
+  EntityView entity = 1;
+}
+
+message EntityNeighborhoodRequest {
+  EntityID center_entity_id = 1;
+  int32 depth = 2 [(buf.validate.field).int32 = {gte: 1, lte: 3}];
+  repeated string relationship_types = 3;
+  int32 max_nodes = 4 [(buf.validate.field).int32 = {gte: 1, lte: 500}];
+}
+
+message RelationshipEdge {
+  EntityID from_entity_id = 1;
+  EntityID to_entity_id = 2;
+  string relationship_type = 3;
+}
+
+message EntityNeighborhoodResponse {
+  EntitySummary center = 1;
+  repeated EntitySummary nodes = 2;
+  repeated RelationshipEdge edges = 3;
+}
+
+message TimelineRequest {
+  ExploreSelector selector = 1;
+  google.protobuf.Timestamp since = 2;
+  google.protobuf.Timestamp until = 3;
+  int32 max_results = 4 [(buf.validate.field).int32 = {gte: 1, lte: 1000}];
+}
+
+message TimelineItem {
+  string event_id = 1;
+  string actor_id = 2;
+  string mutation_type = 3;
+  EntityID target_entity_id = 4;
+  string summary = 5;
+  google.protobuf.Timestamp occurred_at = 6;
+}
+
+message TimelineResponse {
+  repeated TimelineItem items = 1;
+}
+
+message ListOpenQuestionsRequest {
+  ExploreSelector selector = 1;
+  int32 max_results = 2 [(buf.validate.field).int32 = {gte: 1, lte: 200}];
+}
+
+message OpenQuestion {
+  string question_id = 1;
+  string text = 2;
+  EntityID source_entity_id = 3;
+  string status = 4;   // open | resolved
+  string priority = 5; // low | medium | high
+}
+
+message ListOpenQuestionsResponse {
+  repeated OpenQuestion questions = 1;
 }
 ```
 
@@ -420,6 +555,8 @@ package semops.v1;
 import "semops/schema/v1/core.proto";
 import "semops/schema/v1/entities.proto";
 import "semops/schema/v1/experts.proto";
+import "semops/schema/v1/explore.proto";
+import "semops/schema/v1/governance.proto";
 import "semops/schema/v1/knowledge.proto";
 
 // Generic entity service - works for all entity types
@@ -467,6 +604,15 @@ service ContextService {
   rpc GetContextPath(GetContextPathRequest) returns (GetContextPathResponse);
 }
 
+// Read-only exploration service for browsing without export.
+service ExploreService {
+  rpc BrowseOverview(BrowseOverviewRequest) returns (BrowseOverviewResponse);
+  rpc GetEntityView(GetEntityViewRequest) returns (GetEntityViewResponse);
+  rpc GetEntityNeighborhood(EntityNeighborhoodRequest) returns (EntityNeighborhoodResponse);
+  rpc GetTimeline(TimelineRequest) returns (TimelineResponse);
+  rpc ListOpenQuestions(ListOpenQuestionsRequest) returns (ListOpenQuestionsResponse);
+}
+
 // Actor and governance control-plane service
 service GovernanceService {
   // Actor identity lifecycle
@@ -481,6 +627,11 @@ service GovernanceService {
   // Evolution + audit
   rpc TraceSystemEvolution(TraceSystemEvolutionRequest) returns (TraceSystemEvolutionResponse);
   rpc ListMutationAuditEvents(ListMutationAuditEventsRequest) returns (ListMutationAuditEventsResponse);
+
+  // Fine-grained ADR/proposal support
+  rpc CreateDecisionBundle(CreateDecisionBundleRequest) returns (CreateDecisionBundleResponse);
+  rpc GetDecisionBundle(GetDecisionBundleRequest) returns (GetDecisionBundleResponse);
+  rpc LinkDecisionToChange(LinkDecisionToChangeRequest) returns (LinkDecisionToChangeResponse);
 }
 ```
 
@@ -662,6 +813,19 @@ MCP tool schemas are generated from the protobuf service definitions. Because `e
 # Generated: src/semops/generated/mcp/tools.py
 SEMOPS_TOOLS = [
     Tool(
+        name="semops_browse_overview",
+        description="Read-only workspace overview for quick exploration",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "actor_id": {"type": "string"},
+                "include_pending_reviews": {"type": "boolean"},
+                "include_recent_changes": {"type": "boolean"}
+            },
+            "required": ["actor_id"]
+        }
+    ),
+    Tool(
         name="semops_list_entities",
         description="List entities of a specific type with optional relationship filtering",
         inputSchema={
@@ -700,6 +864,44 @@ SEMOPS_TOOLS = [
                 }
             },
             "required": ["entity_id"]
+        }
+    ),
+    Tool(
+        name="semops_get_entity_neighborhood",
+        description="Read-only graph neighborhood traversal around an entity",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "entity_id": {"type": "string"},
+                "depth": {"type": "integer", "minimum": 1, "maximum": 3},
+                "relationship_types": {"type": "array", "items": {"type": "string"}},
+                "max_nodes": {"type": "integer", "minimum": 1, "maximum": 500}
+            },
+            "required": ["entity_id"]
+        }
+    ),
+    Tool(
+        name="semops_get_timeline",
+        description="Read-only timeline of recent system changes",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "since": {"type": "string", "description": "ISO-8601 timestamp"},
+                "until": {"type": "string", "description": "ISO-8601 timestamp"},
+                "max_results": {"type": "integer", "minimum": 1, "maximum": 1000}
+            }
+        }
+    ),
+    Tool(
+        name="semops_list_open_questions",
+        description="Read-only list of unresolved questions across selected scope",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "entity_types": {"type": "array", "items": {"type": "string"}},
+                "domain_ids": {"type": "array", "items": {"type": "string"}},
+                "max_results": {"type": "integer", "minimum": 1, "maximum": 200}
+            }
         }
     ),
     Tool(
@@ -756,10 +958,34 @@ SEMOPS_TOOLS = [
 # Auto-generated async handlers wrapping protobuf services
 class SemOpsHandler:
     def __init__(self, entity_service: EntityService, expert_service: ExpertService,
-                 knowledge_service: KnowledgeService):
+                 knowledge_service: KnowledgeService, explore_service: ExploreService):
         self.entity_service = entity_service
         self.expert_service = expert_service
         self.knowledge_service = knowledge_service
+        self.explore_service = explore_service
+
+    async def handle_semops_browse_overview(self, arguments: Dict[str, Any]) -> List[TextContent]:
+        """Handle browse_overview MCP tool call."""
+        request = explore_pb2.BrowseOverviewRequest(
+            actor_id=arguments["actor_id"],
+            include_pending_reviews=arguments.get("include_pending_reviews", True),
+            include_recent_changes=arguments.get("include_recent_changes", True),
+        )
+
+        response = await self.explore_service.BrowseOverview(request)
+
+        return [TextContent(
+            type="text",
+            text=f"""# Workspace Overview
+
+**Workspace**: {response.workspace_name}
+**Mission**: {response.mission_summary}
+**Constitution**: {response.constitution_id.id} ({response.constitution_state})
+**Active Domains**: {len(response.active_domains)}
+**Pending Reviews**: {len(response.pending_reviews)}
+**Recent Changes**: {len(response.recent_changes)}
+"""
+        )]
 
     async def handle_semops_list_entities(self, arguments: Dict[str, Any]) -> List[TextContent]:
         """Handle list_entities MCP tool call."""
@@ -821,7 +1047,7 @@ class SemOpsHandler:
 
         request = experts_pb2.ExpertAnalysisRequest(
             entity_id=entity_id,
-            expert_type=getattr(experts_pb2.ExpertType, f"EXPERT_TYPE_{expert_type.upper()}"),
+            expert_type=expert_type,
             workflow=workflow,
             auto_save=True
         )
@@ -893,7 +1119,7 @@ from mcp.server.stdio import stdio_server
 from mcp.types import Resource, Tool
 
 from .tools import SEMOPS_TOOLS, SemOpsHandler
-from semops.core import EntityService, ExpertService, KnowledgeService
+from semops.core import EntityService, ExpertService, KnowledgeService, ExploreService
 
 class SemOpsMCPServer:
     """Auto-generated MCP server for SemOps protobuf services."""
@@ -904,9 +1130,10 @@ class SemOpsMCPServer:
 
     def initialize_services(self, entity_service: EntityService,
                           expert_service: ExpertService,
-                          knowledge_service: KnowledgeService):
+                          knowledge_service: KnowledgeService,
+                          explore_service: ExploreService):
         """Initialize with SemOps service instances."""
-        self.handler = SemOpsHandler(entity_service, expert_service, knowledge_service)
+        self.handler = SemOpsHandler(entity_service, expert_service, knowledge_service, explore_service)
         self._register_tools()
 
     def _register_tools(self):
@@ -948,10 +1175,11 @@ async def main():
     entity_service = EntityService()
     expert_service = ExpertService()
     knowledge_service = KnowledgeService()
+    explore_service = ExploreService()
 
     # Create and run MCP server
     mcp_server = SemOpsMCPServer()
-    mcp_server.initialize_services(entity_service, expert_service, knowledge_service)
+    mcp_server.initialize_services(entity_service, expert_service, knowledge_service, explore_service)
 
     await mcp_server.run()
 
@@ -980,6 +1208,11 @@ if __name__ == "__main__":
 - Protobuf validation errors mapped to MCP error responses
 - Service exceptions converted to appropriate MCP error types
 - Detailed error messages with context information
+
+### **5. Read-Only Exploration Without Export**
+- ExploreService provides browse-first read models (overview, neighborhood, timeline, open questions)
+- MCP browse tools support AI-mediated exploration and human CLI exploration
+- Most discovery workflows operate on small scoped reads instead of full workspace export
 
 ## Interface Consistency Benefits
 

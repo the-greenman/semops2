@@ -55,7 +55,7 @@ semops init
 ```bash
 $ semops journey start domain-definition --name "Governance"
 
-🚀 Starting journey: domain_definition
+🚀 Starting journey: domain-definition
 📍 Stage: draft_creation
 
 What is the purpose of this domain?

@@ -2,7 +2,7 @@
 # Interactive process to define a new domain with AI assistance
 
 entity_journey:
-  journey_id: "domain_definition"
+  journey_id: "domain-definition"
   entity_type: "semops.core/domain"
   journey_type: "creation_refinement"
   description: "Interactive process to define operational domains with clear boundaries and stakeholders"

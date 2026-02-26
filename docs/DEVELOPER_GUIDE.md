@@ -55,7 +55,7 @@ This workflow enforces the "Protobuf-first" principle.
 This workflow is purely configuration-based and requires no changes to the `semops2` source code.
 
 1.  **Navigate to Your Knowledge Base**: Go to the root of your knowledge base project (the directory with the `.semops-project` file).
-2.  **Configure the Entity**: Open `.semops/entity_types.yaml` and add a new entry for your entity (e.g., `decision`). Define its ID prefix, parent, directory structure, and other properties.
+2.  **Configure the Entity**: Open `.semops/config/entity_types.yaml` and add a new entry for your entity (e.g., `decision`). Define its ID prefix, parent, directory structure, and other properties.
 3.  **Create the Template**: Create a new Jinja2 template for your entity in `.semops/templates/` (e.g., `decision.md.j2`).
 4.  **Use the New Entity**: Run `semops` again. The new commands (e.g., `semops decision create`) will be automatically available.
 
@@ -64,6 +64,6 @@ This workflow is purely configuration-based and requires no changes to the `semo
 This workflow is also purely configuration-based.
 
 1.  **Navigate to Your Knowledge Base**: Go to the root of your knowledge base project.
-2.  **Define Experts (Optional)**: If your workflow requires new AI personas, add them to `.semops/expert_types.yaml`.
-3.  **Define the Workflow**: Open `.semops/workflows.yaml` and define your new workflow. Specify its name, applicable entity types, and the sequence of steps, including the expert, task, and any inputs for each step.
+2.  **Define Experts (Optional)**: If your workflow requires new AI personas, add them to `.semops/config/expert_types.yaml`.
+3.  **Define the Workflow**: Open `.semops/config/workflows.yaml` and define your new workflow. Specify its name, applicable entity types, and the sequence of steps, including the expert, task, and any inputs for each step.
 4.  **Execute the Workflow**: The new workflow is immediately available via the `analyze` command (e.g., `semops domain analyze --workflow <your-new-workflow>`).

@@ -2,7 +2,7 @@
 # Interactive process to refine decisions from discussion content
 
 entity_journey:
-  journey_id: "decision_refinement"
+  journey_id: "decision-refinement"
   entity_type: "semops.core/decision"
   journey_type: "extraction_refinement"
   description: "Extract and refine decisions from meeting or conversation content"

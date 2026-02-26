@@ -1,7 +1,7 @@
 # Policy Development Journey
 
 entity_journey:
-  journey_id: "policy_development"
+  journey_id: "policy-development"
   entity_type: "org.collaborative/policy"
   journey_type: "creation_refinement"
   description: "Develop and refine organizational policies"
