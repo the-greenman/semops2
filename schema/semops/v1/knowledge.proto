@@ -22,7 +22,7 @@ enum SourceType {
   SOURCE_TYPE_ENTERPRISE_SYSTEMS = 8;
 }
 
-// Chonkie chunking strategies
+// Standard chunking strategies for configurable RAG pipelines
 enum ChunkingStrategy {
   CHUNKING_STRATEGY_UNSPECIFIED = 0;
   CHUNKING_STRATEGY_TOKEN = 1; // Token-based chunking with tiktoken/HuggingFace

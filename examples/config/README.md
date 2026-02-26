@@ -15,7 +15,7 @@ SemOps2 uses a layered configuration loading system:
 ### Core Configuration
 - `entity_types.yaml` - Defines all entity types with namespaces, template bundles, and relationship types
 - `expert_types.yaml` - AI expert configurations and capabilities
-- `source_types.yaml` - Knowledge source definitions with Chonkie chunking strategies
+- `source_types.yaml` - Knowledge source definitions with Haystack-compatible chunking strategies
 - `storage_backends.yaml` - Vector stores, graph databases, and storage configurations
 
 ### Processing Configuration

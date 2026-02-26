@@ -1,5 +1,5 @@
 # Complete Knowledge Repository Configuration Example
-# SemOps2 - Production-Ready Configuration with Chonkie Integration
+# SemOps2 - Production-Ready Configuration with Haystack Integration
 
 # =============================================================================
 # DOMAIN CONFIGURATION
@@ -11,7 +11,7 @@ domain:
   root_path: "/domains/cloud-security"
 
 # =============================================================================
-# SOURCE TYPES WITH CHONKIE CHUNKING
+# SOURCE TYPES WITH HAYSTACK-COMPATIBLE CHUNKING
 # =============================================================================
 
 source_types:

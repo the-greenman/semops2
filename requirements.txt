@@ -14,8 +14,8 @@ PyYAML>=6.0.0
 # Utilities
 python-slugify>=8.0.0
 
-# Source Ingestion - Core Framework
-chonkie>=1.0.2
+# Source Ingestion and RAG Orchestration - Core Framework
+haystack-ai>=2.0.0
 
 # Web Content Extraction
 beautifulsoup4>=4.12.0
@@ -32,7 +32,7 @@ python-pptx>=0.6.0
 libcst>=1.1.0
 GitPython>=3.1.40
 
-# Chunking & Embeddings (for Chonkie)
+# Chunking & Embeddings (for Haystack pipelines)
 tiktoken>=0.5.0
 sentence-transformers>=2.2.0
 

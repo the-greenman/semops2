@@ -1,4 +1,4 @@
-# Enhanced Source Types Configuration with Chonkie Chunking
+# Enhanced Source Types Configuration with Haystack-Compatible Chunking
 # SemOps2 - Source Ingestion Pipeline Configuration
 
 source_types:
@@ -8,7 +8,7 @@ source_types:
     description: "HTML pages, articles, documentation sites"
     icon: "🌐"
 
-    # Processing Pipeline with Chonkie
+    # Processing Pipeline (Haystack-compatible)
     pipeline:
       extractor: "beautifulsoup_extractor"
       processor: "markdown_converter"
@@ -218,7 +218,7 @@ source_types:
 
 # Chunking Strategy Configurations
 chunking_strategies:
-  # Chonkie strategy configurations
+  # Strategy configurations used by Haystack-backed pipelines
   token:
     description: "Split text based on token count using tiktoken or HuggingFace tokenizers"
     parameters:

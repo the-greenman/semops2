@@ -6,6 +6,15 @@ SemOps2's knowledge repository provides a generic, extensible framework for mana
 
 Persistence invariant (ADR-0001): canonical operational records remain markdown + frontmatter documents. Knowledge graph, entity graph, and vector stores are derived projections for retrieval and traversal, maintained synchronously or via durable queued reconciliation.
 
+### Runtime Baseline (Haystack)
+
+SemOps2 standardizes on **Haystack** as the primary RAG pipeline orchestration layer. Source ingestion, chunking, retrieval, and ranking pipelines are implemented through SemOps adapters that wrap Haystack components.
+
+Design constraints:
+- Haystack usage stays behind SemOps interfaces (`KnowledgeService`, `RAGPipelineExecutor`, and adapter boundaries).
+- Pipeline behavior remains configuration-driven via `.semops/config/*` files.
+- Vector backend choice remains environment-specific (e.g., Chroma for local development, Qdrant for production) without changing domain-level behavior.
+
 ## Current RAG System Problems
 
 ### Hardcoded Source Types

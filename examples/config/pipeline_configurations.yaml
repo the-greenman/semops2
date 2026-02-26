@@ -1,5 +1,5 @@
 # Source Ingestion Pipeline Configuration Examples
-# SemOps2 - Chonkie-Enhanced Processing Pipelines
+# SemOps2 - Haystack-Aligned Processing Pipelines
 
 # =============================================================================
 # PIPELINE COMPONENT DEFINITIONS
@@ -131,41 +131,41 @@ processors:
       validate_structure: true
       normalize_keys: true
 
-# Chunking Implementations (Chonkie-based)
+# Chunking Implementations (Haystack-compatible)
 chunkers:
-  chonkie_token:
-    component: "src.chunkers.chonkie.TokenChunker"
-    description: "Chonkie token-based chunking"
-    dependencies: ["chonkie", "tiktoken"]
+  haystack_token:
+    component: "src.chunkers.haystack.TokenChunker"
+    description: "Haystack-compatible token-based chunking"
+    dependencies: ["haystack-ai", "tiktoken"]
     configuration:
       chunk_size: 1000
       tokenizer: "tiktoken/gpt-4"
       overlap: 0
 
-  chonkie_recursive:
-    component: "src.chunkers.chonkie.RecursiveChunker"
-    description: "Chonkie recursive text chunking"
-    dependencies: ["chonkie"]
+  haystack_recursive:
+    component: "src.chunkers.haystack.RecursiveChunker"
+    description: "Haystack-compatible recursive text chunking"
+    dependencies: ["haystack-ai"]
     configuration:
       chunk_size: 1000
       overlap: 100
       separators: ["\n\n", "\n", ". ", " "]
       keep_separator: true
 
-  chonkie_semantic:
-    component: "src.chunkers.chonkie.SemanticChunker"
-    description: "Chonkie semantic similarity chunking"
-    dependencies: ["chonkie", "sentence-transformers"]
+  haystack_semantic:
+    component: "src.chunkers.haystack.SemanticChunker"
+    description: "Haystack-compatible semantic similarity chunking"
+    dependencies: ["haystack-ai", "sentence-transformers"]
     configuration:
       similarity_threshold: 0.5
       embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
       chunk_size: 1200
       min_chunk_size: 100
 
-  chonkie_code:
-    component: "src.chunkers.chonkie.CodeChunker"
-    description: "Chonkie code-aware chunking"
-    dependencies: ["chonkie"]
+  haystack_code:
+    component: "src.chunkers.haystack.CodeChunker"
+    description: "Haystack-compatible code-aware chunking"
+    dependencies: ["haystack-ai"]
     configuration:
       language: "python"
       respect_boundaries: ["function", "class"]
@@ -214,7 +214,7 @@ processing_pipelines:
     components:
       extractor: "beautifulsoup_extractor"
       processor: "text_cleaner"
-      chunker: "chonkie_token"
+      chunker: "haystack_token"
       enrichers: ["metadata_enricher"]
     configuration:
       timeout: 15
@@ -228,7 +228,7 @@ processing_pipelines:
     components:
       extractor: "pymupdf_extractor"
       processor: "text_cleaner"
-      chunker: "chonkie_semantic"
+      chunker: "haystack_semantic"
       enrichers: ["metadata_enricher", "document_structure_enricher"]
     configuration:
       extract_images: true
@@ -242,7 +242,7 @@ processing_pipelines:
     components:
       extractor: "libcst_extractor"
       processor: "code_processor"
-      chunker: "chonkie_code"
+      chunker: "haystack_code"
       enrichers: ["ast_enricher", "dependency_enricher", "complexity_enricher"]
     configuration:
       include_tests: true
@@ -256,7 +256,7 @@ processing_pipelines:
     components:
       extractor: "playwright_extractor"
       processor: "markdown_converter"
-      chunker: "chonkie_recursive"
+      chunker: "haystack_recursive"
       enrichers: ["metadata_enricher", "link_extractor"]
     configuration:
       wait_for_load: true
@@ -270,7 +270,7 @@ processing_pipelines:
     components:
       extractor: "httpx_extractor"
       processor: "json_processor"
-      chunker: "chonkie_token"
+      chunker: "haystack_token"
       enrichers: ["schema_enricher", "relationship_enricher"]
     configuration:
       validate_schema: true
