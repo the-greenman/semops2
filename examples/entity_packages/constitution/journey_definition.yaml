@@ -4,30 +4,52 @@ entity_journey:
   journey_id: "constitution_ratification"
   entity_type: "org.collaborative/constitution"
   journey_type: "creation_refinement"
-  description: "High-stakes process to create foundational governing documents"
+  description: "Bootstrap with a minimal draft constitution, then refine and ratify as understanding improves"
 
   checkpoint_after_each_stage: true
   allow_pause_resume: true
   allow_restart: true
 
   stages:
-    - name: "draft_constitution"
+    - name: "bootstrap_constitution"
       type: "human.create"
-      required_fields: ["constitution_name", "principles"]
+      description: "Create initial v0.x charter with purpose, early principles, and known unknowns"
+      required_fields: ["constitution_name", "version", "constitution_state", "principles"]
+      optional_fields: ["problem_statement", "organizational_purpose", "open_questions"]
 
-    - name: "stakeholder_consultation"
+    - name: "context_integration"
       type: "ai.assist"
       agent:
         role: "constitutional_advisor"
         persona: "You help craft foundational governance documents"
         expertise: ["governance", "constitutional_design", "consensus_building"]
+      description: "Integrate new domain/problem insights and identify constitutional gaps"
 
     - name: "review_draft"
       type: "human.review"
+      description: "Refine principles and boundaries; iterate while organization understanding evolves"
+      actions:
+        - action: "refine"
+          label: "Refine draft with new context"
+          next_stage: "context_integration"
+        - action: "provisional_approve"
+          label: "Mark provisional and continue operating"
+          next_stage: "voting_process"
+        - action: "ratification_ready"
+          label: "Ready for ratification vote"
+          next_stage: "voting_process"
 
     - name: "voting_process"
       type: "human.review"
-      description: "Formal voting on constitution"
+      description: "Formal vote: ratify now or continue as provisional charter"
+      actions:
+        - action: "ratify"
+          label: "Ratify constitution"
+          next_stage: "finalize_constitution"
+        - action: "continue_provisional"
+          label: "Continue as provisional and iterate"
+          next_stage: "context_integration"
 
     - name: "finalize_constitution"
       type: "system.commit"
+      description: "Commit constitution with state + amendment metadata for future updates"

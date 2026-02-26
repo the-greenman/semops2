@@ -19,10 +19,19 @@ entity_type:
   filename_pattern: "{entity_type}.md"
   nesting_strategy: "root"
 
+  # Constitution is expected to start as a lightweight draft and mature over time.
   required_fields:
     - "constitution_name"
     - "version"
+    - "constitution_state"  # draft | provisional | ratified
+
+  optional_fields:
     - "ratification_date"
+    - "problem_statement"
+    - "organizational_purpose"
+    - "principles"
+    - "open_questions"
+    - "amendment_log"
 
   unique_fields:
     - "constitution_slug"

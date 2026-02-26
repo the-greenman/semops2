@@ -4,7 +4,7 @@ This guide provides a practical overview of the development workflows for `semop
 
 ## Core Architectural Principles
 
-Before you begin, be familiar with the core principles defined in `ARCHITECTURE.md`:
+Before you begin, be familiar with the core principles defined in `IDL_ARCHITECTURE.md` and `INTERFACE_CONTRACT.md`:
 
 1.  **Protobuf-First Service Definition**: Service contracts are the source of truth.
 2.  **Configuration-Driven**: Entities and workflows are defined in YAML, not code.

@@ -4,7 +4,14 @@ strategies:
   manual:
     description: "Constitutional changes require human oversight"
     requires_approval: true
+  llm_assisted_with_review:
+    description: "Use AI to propose amendments, always with explicit human review"
+    requires_approval: true
 rollback:
   enabled: true
   backup_location: ".semops/backups/migrations"
   retention_policy: "365_days"  # Longer retention for constitutional docs
+
+# Governance note:
+# - Expect frequent non-breaking updates while constitution_state is draft/provisional.
+# - Once ratified, changes should be treated as amendments with stronger review requirements.

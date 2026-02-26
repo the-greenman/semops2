@@ -22,22 +22,82 @@ This document defines the architecture for using SemOps2 to support collaborativ
 4. **Rapid Evolution** - Templates change frequently in early use without causing chaos
 5. **Modular Design** - Entity types and their journeys are self-contained packages
 6. **CLI-First** - Command-line interface for all operations
+7. **Protobuf-First Implementation** - Stable behavior is implemented as protobuf contracts; YAML is for planning and configuration iteration
+8. **Entity Server as Mutation Boundary** - All creates/updates/deletes go through Entity Server validation and policy checks
+9. **Hybrid Persistence** - Canonical human-readable documents plus graph/vector indexes for navigation and retrieval
 
-### The Three Graphs
+### Opinionated Product Stance
+
+The platform remains configurable for many organizational forms. The primary near-term use case is building post-human, democratic, human-positive, and earth-positive organizations that harness AI for the greater good.
+
+Mission framing:
+- Enable democracy at micro scale inside teams and organizations.
+- Strengthen democracy at macro scale by developing transferable governance practices.
+
+Design commitments for this use case:
+- **Boundary First (Taiji)**: Define clear purpose, scope, and authority boundaries before optimization and scale.
+- **Human Decision Sovereignty**: AI can analyze, propose, challenge, and coach; humans remain accountable for governance decisions.
+- **Anti-Abdication by Design**: Workflow stages and boundary checks should prevent humans from silently offloading core governance duties to automation.
+
+### Implementation Baseline
+
+- Planning phase: journeys, templates, and package structures may evolve in YAML.
+- Implementation phase: protobuf contracts become the runtime source of truth for service interfaces and validation.
+- MCP is an orchestration/automation interface; it does not bypass Entity Server invariants.
+- Founding bootstrap starts with human actor registration and role binding before constitution/policy drafting.
+- Constitution starts as a minimal draft (`v0.x`, `constitution_state=draft|provisional`) and is iteratively refined as domains/problems become clearer.
+
+### Architecture Invariants
+
+These rules are mandatory for implementation and future design changes:
+
+1. **Entity Server is the only mutation boundary**
+   - All create/update/delete operations must execute through Entity Server.
+   - No client (CLI, MCP, API, workflows) may write documents, graph records, or vector metadata directly.
+
+2. **Protobuf contracts are the runtime source of truth**
+   - Request/response schemas, validation, and compatibility rules are defined in protobuf.
+   - YAML remains planning/configuration input, not the authoritative runtime contract.
+
+3. **MCP is orchestration, not authority**
+   - MCP may coordinate workflows, agent tools, and human-in-the-loop stages.
+   - Any state mutation requested by MCP must call Entity Server APIs.
+
+4. **Canonical human-readable documents are required**
+   - Markdown + frontmatter is the canonical operational record for human browsing and audit.
+   - Graph and vector stores are derived indexes over canonical documents.
+
+5. **Hybrid persistence consistency is enforced**
+   - A mutation is not complete until canonical document write and index updates are confirmed,
+     or queued with guaranteed reconciliation and retry.
+   - Drift between document state and graph/vector indexes must be detectable and repairable.
+
+6. **Policy and relationship invariants are centralized**
+   - Authority checks, boundary rules, and relationship constraints are enforced in Entity Server.
+   - Workflow code cannot redefine or bypass these invariants.
+
+7. **Every mutation is traceable**
+   - Mutations record who/what initiated the change, when, and why (human, actor, or system).
+   - Migration and workflow actions must produce auditable history.
+
+8. **No actor attribution, no normal commit**
+   - Standard operations must include `created_by_actor_id` / `updated_by_actor_id`.
+   - `ACT-system` is allowed only for explicit system operations (bootstrap, imports, migrations, recovery).
+   - Any temporary unknown attribution must be reconciled and reported.
+
+### Hybrid Persistence Model
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│ Entity Graph (Neo4j)                                    │
-│ Operational entities and relationships                  │
-│ - Domains, Roles, Meetings, Decisions, Policies        │
-│ - part_of, accountable_for, establishes, ratifies      │
+│ Canonical Documents (Markdown + frontmatter)            │
+│ Human-browsable operational records                     │
+│ - Domains, Roles, Meetings, Decisions, Policies         │
 └─────────────────────────────────────────────────────────┘
                          ↓
 ┌─────────────────────────────────────────────────────────┐
-│ Knowledge Graph (Neo4j)                                 │
-│ Semantic content and concepts                          │
-│ - Documents, Chunks, Concepts, Citations                │
-│ - mentions, relates_to, derives_from                    │
+│ Graph Index (Neo4j)                                     │
+│ Navigational and governance map over documents          │
+│ - Entity relationships + semantic links                 │
 └─────────────────────────────────────────────────────────┘
                          ↓
 ┌─────────────────────────────────────────────────────────┐
@@ -47,6 +107,20 @@ This document defines the architecture for using SemOps2 to support collaborativ
 │ - Authority weights, source types                       │
 └─────────────────────────────────────────────────────────┘
 ```
+
+Implications of this hybrid model:
+- Human access remains first-class because documents are canonical artifacts.
+- Graph and vector layers can be rebuilt from documents, reducing lock-in risk.
+- Write-path consistency is critical: document and graph updates must commit atomically or with reliable reconciliation.
+- Operational complexity is higher than a single-store model (indexing, sync jobs, repair tools).
+
+### Constitutional Evolution Practice
+
+- Create a bootstrap constitution early with minimal viable principles.
+- Treat early constitution as provisional while organizational context is still being discovered.
+- Use regular refinement cycles (domain/problem discoveries trigger constitutional review).
+- Ratify only when principles and authority boundaries are stable enough for enforcement.
+- After ratification, changes are managed as formal amendments with stronger review.
 
 ## Entity-Journey Framework
 
@@ -60,7 +134,7 @@ semops domain create foo --name "Foo" --purpose "Bar"
 
 Journey-based creation:
 ```bash
-semops journey start domain-definition --name "Foo"
+semops journey start domain_definition --name "Foo"
 # Interactive multi-stage process with AI guidance
 ```
 
@@ -418,7 +492,7 @@ AI agents use authority-weighted retrieval:
 ```
 ┌─────────────────────────────────────────────────────┐
 │ CLI                                                  │
-│ semops journey start domain-definition --name "Foo" │
+│ semops journey start domain_definition --name "Foo" │
 └─────────────────────────────────────────────────────┘
                      ↓
 ┌─────────────────────────────────────────────────────┐
@@ -431,20 +505,22 @@ AI agents use authority-weighted retrieval:
 └─────────────────────────────────────────────────────┘
                      ↓
 ┌─────────────────────────────────────────────────────┐
-│ SemOps2 MCP Server (Tools)                          │
-│ • semops_create_entity                              │
-│ • semops_get_entity                                 │
-│ • semops_expert_analyze                             │
-│ • semops_add_relationship                           │
-│ • semops_knowledge_search                           │
+│ SemOps2 MCP Server (Orchestration + Extensions)     │
+│ • Coordinates workflows and AI/tool integrations    │
+│ • Exposes controlled automation surface             │
 └─────────────────────────────────────────────────────┘
                      ↓
 ┌─────────────────────────────────────────────────────┐
-│ SemOps2 Core Services                               │
-│ • EntityService                                     │
-│ • ExpertService                                     │
-│ • KnowledgeService                                  │
-│ • TemplateService                                   │
+│ Entity Server (Authoritative Mutation Boundary)     │
+│ • Protobuf validation + policy checks               │
+│ • EntityService + relationship invariants           │
+│ • Emits canonical document + graph/vector updates   │
+└─────────────────────────────────────────────────────┘
+                     ↓
+┌─────────────────────────────────────────────────────┐
+│ Core Services + Storage                             │
+│ • KnowledgeService • TemplateService • Indexers     │
+│ • Document Store • Graph Store • Vector Store       │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -519,7 +595,7 @@ result = await app.ainvoke(initial_state, config=config)
 ### CLI Interaction
 
 ```bash
-$ semops journey start domain-definition --name "Security & Compliance"
+$ semops journey start domain_definition --name "Security & Compliance"
 
 🚀 Starting journey: domain_definition
 📍 Stage: draft_creation
@@ -605,21 +681,30 @@ View domain: semops domain get DOM-security-compliance
 
 ```bash
 # 1. Initialize workspace with collaborative org config
-semops init --config examples/entity_packages
+semops init --config examples/config/collaborative_org_config_v2.yaml
 
-# 2. Create constitution through ratification journey
-semops journey start constitution-ratification --name "Founding Charter"
+# 2. Register founding humans as actors
+semops actor register --actor-type human --name "Founder A" --actor-id ACT-founder-a
+semops actor register --actor-type human --name "Founder B" --actor-id ACT-founder-b
+
+# 3. Bind founding governance roles
+semops relationship add holds_role ACT-founder-a ROL-founder
+semops relationship add holds_role ACT-founder-b ROL-founder
+
+# 4. Create bootstrap constitution through ratification journey
+semops journey start constitution_ratification --name "Founding Charter"
 # Interactive process with:
-# - Draft principles
-# - Stakeholder consultation (AI-assisted)
-# - Review and refinement
-# - Formal voting process
-# - Ratification
+# - Bootstrap v0.x draft (minimal principles, open questions)
+# - Context integration from domain/problem discovery (AI-assisted)
+# - Iterative review/refinement
+# - Provisional or ratified vote
+# - Commit with constitution_state + amendment log
 
 # Created: CONST-founding-charter (authority_weight: 1.0)
+# Provenance: created_by_actor_id=ACT-founder-a (or ACT-founder-b)
 
-# 3. Create initial domains
-semops journey start domain-definition --name "Governance"
+# 5. Create initial domains
+semops journey start domain_definition --name "Governance"
 # Interactive process with:
 # - Scope clarification (AI-assisted)
 # - Resource identification (AI finds related entities)
@@ -629,11 +714,11 @@ semops journey start domain-definition --name "Governance"
 # Created: DOM-governance
 # Authority: HIGH (governance domain)
 
-semops journey start domain-definition --name "Operations"
+semops journey start domain_definition --name "Operations"
 # Created: DOM-operations
 # Authority: MEDIUM (operational domain)
 
-# 4. Hold founding meeting
+# 6. Hold founding meeting
 semops meeting create founding-meeting \
   --name "Founding Meeting" \
   --part-of DOM-governance \
@@ -641,8 +726,8 @@ semops meeting create founding-meeting \
 
 # Created: MTG-founding-meeting
 
-# 5. Extract decisions from meeting
-semops journey start decision-refinement MTG-founding-meeting
+# 7. Extract decisions from meeting
+semops journey start decision_refinement MTG-founding-meeting
 # Interactive process with:
 # - AI identifies potential decisions in transcription
 # - Human reviews, confirms, merges, splits
@@ -658,16 +743,16 @@ semops journey start decision-refinement MTG-founding-meeting
 # Created: DEC-001, DEC-002, DEC-003, ...
 # Each decision linked to MTG-founding-meeting
 
-# 6. One decision establishes a policy
-semops journey start policy-development --name "Access Control Policy"
-# Interactive process similar to domain-definition
+# 8. One decision establishes a policy
+semops journey start policy_development --name "Access Control Policy"
+# Interactive process similar to domain_definition
 
 # Created: POL-access-control
 
 # Establish relationship
 semops relationship add establishes DEC-002 POL-access-control
 
-# 7. Verify authority hierarchy
+# 9. Verify authority hierarchy
 semops knowledge search "access control requirements" \
   --workflow authority_weighted
 
@@ -833,7 +918,7 @@ $ semops migrate rollback --to-version 1.0.0
 
 ```bash
 # 1. Start decision journey from security meeting
-$ semops journey start decision-refinement MTG-security-review-q1
+$ semops journey start decision_refinement MTG-security-review-q1
 
 # 2. AI identifies potential decision
 📍 Stage: identify_decisions

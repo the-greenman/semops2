@@ -130,6 +130,123 @@ enum EntityStatus {
 
 **Why not a closed enum for `entity_type`?** Protobuf enums are schema-level constructs that require a schema change and regeneration to add a new value. Since entity types are defined in YAML configuration and must be extensible by third parties without modifying the schema, `entity_type` carries the fully-qualified string key (`semops.core/decision`) and validation against valid types happens in the `ConfigManager` at runtime, not in the protobuf layer.
 
+### Actor and Governance Control-Plane Schema (Planned)
+
+Semantic operations require actor identity, boundary decisions, and mutation audit events as first-class protobuf messages. These are control-plane contracts and are not modeled as generic content frontmatter.
+
+```protobuf
+// schema/semops/v1/governance.proto (planned)
+syntax = "proto3";
+package semops.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+import "semops/v1/core.proto";
+
+// Actor identity used by humans, software, services, and future actor types.
+message Actor {
+  // Stable actor identifier, e.g. "ACT-assistant-007"
+  string actor_id = 1 [(buf.validate.field).string.pattern = "^ACT-[a-z0-9-]+$"];
+
+  // Open string for extensibility; examples: "human", "software", "service", "posthuman"
+  string actor_type = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Human-readable name
+  string display_name = 3 [(buf.validate.field).string.min_len = 1];
+
+  // Role links (ROL-*) used by policy and approval logic
+  repeated string role_bindings = 4;
+
+  // Declared capabilities, evaluated by policy engine at runtime
+  repeated string capabilities = 5;
+
+  // Organization-defined authority tier (e.g., LOW, MEDIUM, HIGH)
+  string authority_level = 6;
+
+  ActorStatus status = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+
+  // Extensible metadata (identity provider refs, labels, external IDs, etc.)
+  google.protobuf.Struct metadata = 10;
+}
+
+enum ActorStatus {
+  ACTOR_STATUS_UNSPECIFIED = 0;
+  ACTOR_STATUS_ACTIVE = 1;
+  ACTOR_STATUS_SUSPENDED = 2;
+  ACTOR_STATUS_RETIRED = 3;
+}
+
+// Request to evaluate whether an actor can perform an action in context.
+message PermissionDecisionRequest {
+  string actor_id = 1 [(buf.validate.field).string.pattern = "^ACT-[a-z0-9-]+$"];
+  string proposed_action = 2 [(buf.validate.field).string.min_len = 1];
+  google.protobuf.Struct action_context = 3;
+}
+
+// Policy evaluation result with traceable reasoning.
+message PermissionDecision {
+  string decision_id = 1;
+  string actor_id = 2;
+  string proposed_action = 3;
+  PermissionResult result = 4;
+
+  // Policy/constitution/decision references that justify outcome.
+  repeated string policy_references = 5;
+  repeated string approver_roles = 6;
+
+  string rationale = 7;
+  google.protobuf.Timestamp evaluated_at = 8;
+  string evaluator_version = 9; // ruleset hash/version
+}
+
+enum PermissionResult {
+  PERMISSION_RESULT_UNSPECIFIED = 0;
+  PERMISSION_RESULT_ALLOWED = 1;
+  PERMISSION_RESULT_NEEDS_APPROVAL = 2;
+  PERMISSION_RESULT_FORBIDDEN = 3;
+}
+
+// Immutable audit event for any state mutation.
+message MutationAuditEvent {
+  string event_id = 1;
+  string actor_id = 2;
+  string mutation_type = 3; // create_entity, update_entity, add_relationship, migrate_template, etc.
+
+  EntityID target_entity_id = 4;
+  string change_reason = 5;
+  string authority_basis = 6; // constitutional/policy/decision citation
+
+  // Optional workflow traceability.
+  string journey_id = 7;
+  string journey_stage = 8;
+  string review_id = 9;
+
+  // Hybrid persistence integrity tracking.
+  string document_revision_id = 10;
+  SyncStatus graph_sync_status = 11;
+  SyncStatus vector_sync_status = 12;
+  string reconciliation_run_id = 13;
+
+  google.protobuf.Timestamp occurred_at = 14;
+  google.protobuf.Struct metadata = 15;
+}
+
+enum SyncStatus {
+  SYNC_STATUS_UNSPECIFIED = 0;
+  SYNC_STATUS_PENDING = 1;
+  SYNC_STATUS_COMPLETED = 2;
+  SYNC_STATUS_FAILED = 3;
+}
+```
+
+Control-plane enforcement policy (planned):
+- Normal mutating requests require actor attribution in metadata (`created_by_actor_id` / `updated_by_actor_id`).
+- `ACT-system` is allowed only for explicit system-classified operations (bootstrap/import/migration/recovery).
+- Unknown attribution is treated as governance debt and must be reconciled via audit workflow.
+
 ### Entity Document (File-Based View)
 
 Rather than defining message types per entity (which would require a schema change for every new entity type), SemOps2 uses a single generic `EntityDocument` that represents the file-based view of any entity. Entity-specific fields live in `frontmatter` as a free-form `Struct`.
@@ -348,6 +465,22 @@ service ContextService {
   rpc DetectContext(DetectContextRequest) returns (DetectContextResponse);
   rpc ValidateContext(ValidateContextRequest) returns (ValidateContextResponse);
   rpc GetContextPath(GetContextPathRequest) returns (GetContextPathResponse);
+}
+
+// Actor and governance control-plane service
+service GovernanceService {
+  // Actor identity lifecycle
+  rpc RegisterActor(RegisterActorRequest) returns (RegisterActorResponse);
+  rpc GetActor(GetActorRequest) returns (GetActorResponse);
+  rpc ListActors(ListActorsRequest) returns (ListActorsResponse);
+
+  // Semantic context + boundary checks
+  rpc DiscoverOperationalContext(DiscoverOperationalContextRequest) returns (DiscoverOperationalContextResponse);
+  rpc EvaluatePermission(PermissionDecisionRequest) returns (PermissionDecision);
+
+  // Evolution + audit
+  rpc TraceSystemEvolution(TraceSystemEvolutionRequest) returns (TraceSystemEvolutionResponse);
+  rpc ListMutationAuditEvents(ListMutationAuditEventsRequest) returns (ListMutationAuditEventsResponse);
 }
 ```
 

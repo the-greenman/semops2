@@ -1,6 +1,11 @@
 # SemOps2 Architecture Visualization
 
-This document provides a high-level visual overview of the SemOps2 architecture using Mermaid diagrams. It illustrates the interaction between the core components and shows the flow for key operations like entity creation and AI-driven analysis.
+This document provides a high-level visual overview of the SemOps2 architecture using Mermaid diagrams. It illustrates the interaction between core components and shows the flow for key operations like entity creation and AI-driven analysis.
+
+Canonical planning decisions reflected here:
+- Protobuf-first implementation contracts.
+- Entity Server is the mandatory mutation boundary.
+- Hybrid persistence: canonical markdown documents plus graph/vector indexes.
 
 ## Component Overview
 
@@ -38,7 +43,8 @@ graph TD
     subgraph "Knowledge Subsystem"
         KnowledgeService["KnowledgeService"]
         VectorStore["Vector Store (ChromaDB)"]
-        FileSystem["File System (Markdown Files)"]
+        GraphStore["Graph Store (Neo4j)"]
+        FileSystem["Canonical Documents (Markdown Files)"]
     end
 
     subgraph "Configuration & Schema"
@@ -68,6 +74,7 @@ graph TD
     EntityService --> TemplateEngine
     EntityService --> WorkflowEngine
     EntityService --> KnowledgeService
+    EntityService --> GraphStore
     EntityService --> FileSystem
 
     %% Configuration relationships
@@ -87,6 +94,7 @@ graph TD
 
     %% Knowledge system relationships
     KnowledgeService --> VectorStore
+    KnowledgeService --> GraphStore
     KnowledgeService --> FileSystem
 
     classDef enforced fill:#ff6b6b,stroke:#d63031,stroke-width:3px,color:#fff
@@ -188,7 +196,7 @@ sequenceDiagram
 
 ### Flow 3: API/MCP `create` Request (Enforced Entity Server)
 
-This shows how external clients interact through the enforced entity server with unified validation.
+This shows how external clients interact through the enforced entity server with unified validation. MCP can orchestrate richer workflows, but mutating operations still route through Entity Server.
 
 ```mermaid
 sequenceDiagram

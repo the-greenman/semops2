@@ -19,8 +19,8 @@
 
 ## Key Design Decisions
 
-### 1. **YAML for Definitions** ✅
-Use YAML for journey definitions (not protobuf yet)
+### 1. **Planning YAML + Protobuf-First Implementation** ✅
+Use YAML to iterate quickly during planning, then formalize stable contracts in protobuf for implementation.
 
 ### 2. **Modular Entity-Journey Units** ✅
 Entities and their journeys are paired units that can be brought in from different places
@@ -43,6 +43,15 @@ Answer: **A** - Manual migration with explicit control
 ### 8. **Journey Checkpoints** ✅
 Answer: **C** - Both LangGraph state AND entity metadata
 
+### 9. **Actor Bootstrap + Attribution Policy** ✅
+Founding humans are registered as actors first, and all normal mutations require actor attribution. `ACT-system` is restricted to explicit system operations.
+
+### 10. **Opinionated Democratic + Earth-Positive Stance** ✅
+Primary near-term use case is post-human democratic organizations with human decision sovereignty, taiji boundary-setting, and AI used as coaching support rather than governance replacement.
+
+### 11. **Micro-to-Macro Democracy Mission** ✅
+Use micro-scale democratic practice (teams/organizations) as the development ground for practices that can improve macro-scale democracy.
+
 ## Revised Understanding: Modular Entity-Journey Units
 
 Each entity type is a **self-contained package**:
@@ -63,9 +72,9 @@ domain_entity_package/
 ```
 /workspace
 ├── docs/
-│   ├── ARCHITECTURE.md (existing - core SemOps2)
 │   ├── IDL_ARCHITECTURE.md (existing - protobuf interfaces)
-│   └── COLLABORATIVE_ORG_ARCHITECTURE.md (NEW - consolidated design)
+│   ├── INTERFACE_CONTRACT.md (existing - protobuf consumer contract)
+│   └── COLLABORATIVE_ORG_ARCHITECTURE.md (NEW - consolidated collaborative-org design)
 │
 └── examples/
     ├── config/

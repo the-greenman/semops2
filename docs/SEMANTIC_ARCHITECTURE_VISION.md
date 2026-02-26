@@ -2,7 +2,23 @@
 
 ## Core Vision
 
-SemOps2 is not just an organizational tool—it is a **semantic architecture system** that enables collaboration between different forms of intelligence (human, AI, and future posthuman agents).
+SemOps2 is not just an organizational tool—it is a **semantic architecture system** that enables collaboration between different forms of intelligence (humans, software actors, and future posthuman actors).
+
+### Current Opinionated Stance
+
+SemOps2 should remain adaptable to many organizational forms, but the primary near-term use case is:
+- building effective post-human, democratic, human-positive, and earth-positive organizations
+- using AI to strengthen collective intelligence for the greater good
+
+Guiding stance:
+- establish clear boundaries (taiji) before scaling action
+- implement robust AI-supported human decision processes
+- keep humans accountable for governance and decisions
+- use AI as coach and challenger, not as a substitute for human duty
+
+Mission framing:
+- SemOps2 is a tool for democracy at micro scale.
+- It aims to influence democracy at macro scale by cultivating repeatable foundational practices.
 
 The system develops structured context and intent that allows diverse intelligences to:
 - Understand the purpose and boundaries of their operational environment
@@ -19,7 +35,7 @@ Designed for human-only collaboration:
 - Hidden authority structures
 - Context locked in human memory
 
-**Problem**: AI agents cannot effectively participate because critical context is inaccessible.
+**Problem**: non-human actors cannot effectively participate because critical context is inaccessible.
 
 ### SemOps2 Approach
 Explicit semantic architecture:
@@ -29,18 +45,20 @@ Explicit semantic architecture:
 - **Intent preservation** - Decision rationale, assumptions, outcomes
 - **Evolution tracking** - Why and how structures change
 
-**Result**: Both human and AI agents can query the system to understand "what am I part of and what can I do?"
+**Result**: Humans and other actors can query the system to understand "what am I part of and what can I do?"
 
 ## MCP as the Intelligence Interface
 
 ### MCP Server Role
 
-The Model Context Protocol (MCP) server is the **semantic interface** through which AI agents discover context and intent:
+The Model Context Protocol (MCP) server is the **semantic interface** through which actors discover context and intent. MCP orchestrates interactions, but all mutating operations are enforced by Entity Server.
 
 ```
-AI Agent
+Actor
    ↓
 MCP Server (Semantic Interface)
+   ↓
+Entity Server (Validation + Policy Boundary)
    ↓
 Entity Graph (Operational Structure)
    ↓
@@ -52,17 +70,17 @@ Vector Store (Weighted Knowledge)
 ### Critical MCP Capabilities
 
 #### 1. Context Discovery
-AI agents query: "What system am I part of?"
+Actors query: "What system am I part of?"
 
 ```python
-# MCP Tool: discover_operational_context
-async def discover_operational_context(agent_role_id: str):
+# MCP Tool: semops_discover_operational_context
+async def semops_discover_operational_context(actor_id: str):
     """
-    Provides AI agent with complete operational context
+    Provides actor with complete operational context
 
     Returns:
     - Constitutional principles governing this system
-    - Domains this agent can operate in
+    - Domains this actor can operate in
     - Authority level and decision-making boundaries
     - Relevant policies and procedures
     - Current state of the system
@@ -80,8 +98,8 @@ async def discover_operational_context(agent_role_id: str):
             ]
         },
 
-        "agent_context": {
-            "role_id": "ROL-ai-assistant-001",
+        "actor_context": {
+            "actor_id": "ACT-assistant-001",
             "authority_level": "MEDIUM",
             "accountable_for": ["DOM-operations"],
             "consulted_for": ["DOM-governance"],
@@ -92,7 +110,7 @@ async def discover_operational_context(agent_role_id: str):
             "can_create": ["meeting", "conversation", "artefact"],
             "can_suggest": ["decision", "policy"],
             "cannot_create": ["constitution"],
-            "must_consult_human": ["decisions with authority > MEDIUM"]
+            "requires_approval_from_roles": ["decisions with authority > MEDIUM"]
         },
 
         "knowledge_access": {
@@ -106,7 +124,7 @@ async def discover_operational_context(agent_role_id: str):
         },
 
         "current_state": {
-            "active_journeys": ["decision-refinement: MTG-weekly-sync"],
+            "active_journeys": ["decision_refinement: MTG-weekly-sync"],
             "pending_reviews": ["DEC-003: needs human approval"],
             "recent_changes": [
                 "POL-access-control: updated 2 days ago",
@@ -117,11 +135,11 @@ async def discover_operational_context(agent_role_id: str):
 ```
 
 #### 2. Intent Understanding
-AI agents query: "Why does this exist and what should I do with it?"
+Actors query: "Why does this exist and what should I do with it?"
 
 ```python
-# MCP Tool: understand_entity_intent
-async def understand_entity_intent(entity_id: str):
+# MCP Tool: semops_understand_entity_intent
+async def semops_understand_entity_intent(entity_id: str):
     """
     Explains purpose, context, and usage of an entity
 
@@ -182,7 +200,7 @@ async def understand_entity_intent(entity_id: str):
                 "Add security incidents as entities with relationships",
                 "Reference in decisions that have security implications"
             ],
-            "agents_with_access": [
+            "actors_with_access": [
                 "ROL-security-lead (accountable)",
                 "ROL-compliance-officer (accountable)",
                 "ROL-engineering-leads (consulted)"
@@ -202,12 +220,12 @@ async def understand_entity_intent(entity_id: str):
 ```
 
 #### 3. Boundary Navigation
-AI agents query: "What am I allowed to do and what requires human involvement?"
+Actors query: "What am I allowed to do and what requires human involvement?"
 
 ```python
-# MCP Tool: query_operational_boundaries
-async def query_operational_boundaries(
-    agent_role_id: str,
+# MCP Tool: semops_query_operational_boundaries
+async def semops_query_operational_boundaries(
+    actor_id: str,
     proposed_action: str,
     context: dict
 ):
@@ -233,7 +251,7 @@ async def query_operational_boundaries(
         "permission": "needs_approval",
 
         "reasoning": {
-            "constitutional_basis": "CONST-founding-charter §3.2: AI agents may propose decisions but humans must approve",
+            "constitutional_basis": "CONST-founding-charter §3.2: actors may propose decisions but humans must approve",
             "policy_basis": "POL-ai-collaboration §2: Decisions affecting operations require human review",
             "authority_check": "MEDIUM authority requires human in loop per governance structure"
         },
@@ -249,7 +267,7 @@ async def query_operational_boundaries(
         "recommended_approach": {
             "action": "create_draft_decision",
             "next_steps": [
-                "1. Use journey: decision-refinement to create draft",
+                "1. Use journey: decision_refinement to create draft",
                 "2. Journey will pause at human review stage",
                 "3. Notification sent to ROL-operations-lead",
                 "4. Human reviews and approves/rejects/edits"
@@ -272,11 +290,11 @@ async def query_operational_boundaries(
 ```
 
 #### 4. Authority Navigation
-AI agents query: "How authoritative is this information?"
+Actors query: "How authoritative is this information?"
 
 ```python
-# MCP Tool: assess_knowledge_authority
-async def assess_knowledge_authority(
+# MCP Tool: semops_assess_knowledge_authority
+async def semops_assess_knowledge_authority(
     query: str,
     context: dict = None
 ):
@@ -371,11 +389,11 @@ async def assess_knowledge_authority(
 ```
 
 #### 5. Evolution Understanding
-AI agents query: "How and why has this system changed?"
+Actors query: "How and why has this system changed?"
 
 ```python
-# MCP Tool: trace_system_evolution
-async def trace_system_evolution(
+# MCP Tool: semops_trace_system_evolution
+async def semops_trace_system_evolution(
     entity_id: str = None,  # Specific entity, or None for system-wide
     time_range: dict = None
 ):
@@ -398,7 +416,7 @@ async def trace_system_evolution(
                 "date": "2026-02-20",
                 "change_type": "template_migration",
                 "summary": "Added authority_level field to all domains",
-                "rationale": "DEC-045: Need explicit authority tracking for AI agent boundaries",
+                "rationale": "DEC-045: Need explicit authority tracking for actor boundaries",
                 "affected_entities": 12,
                 "migration_strategy": "llm_assisted_with_review",
                 "outcome": "Success - all entities migrated, 2 required manual adjustment"
@@ -407,15 +425,15 @@ async def trace_system_evolution(
             {
                 "date": "2026-01-15",
                 "change_type": "constitutional_amendment",
-                "summary": "Added AI agent collaboration guidelines",
-                "rationale": "DEC-038: Formalize how AI agents participate in governance",
+                "summary": "Added actor collaboration guidelines",
+                "rationale": "DEC-038: Formalize how actors participate in governance",
                 "process": "Consensus (8/8 leads approved)",
                 "affected_entities": {
                     "constitution": ["CONST-founding-charter"],
                     "new_policies": ["POL-ai-collaboration"],
                     "updated_domains": ["DOM-governance", "DOM-operations"]
                 },
-                "impact": "AI agents now have explicit boundaries and roles"
+                "impact": "actors now have explicit boundaries and roles"
             }
         ],
 
@@ -439,8 +457,8 @@ async def trace_system_evolution(
 
             "emerging_needs": [
                 {
-                    "pattern": "3 decisions about AI agent boundaries in 30 days",
-                    "interpretation": "Need clearer framework for AI participation",
+                    "pattern": "3 decisions about actor boundaries in 30 days",
+                    "interpretation": "Need clearer framework for actor participation",
                     "suggestion": "Consider creating POL-ai-decision-boundaries"
                 }
             ]
@@ -469,7 +487,7 @@ async def trace_system_evolution(
         "future_implications": {
             "predicted_changes": [
                 "Template version 1.2.0 likely in next 30 days (3 proposals pending)",
-                "New domain for 'AI Collaboration' emerging (6 conversations mention need)",
+                "New domain for 'Actor Collaboration' emerging (6 conversations mention need)",
                 "Policy consolidation possible (12 policies, some overlapping)"
             ]
         }
@@ -486,10 +504,23 @@ async def trace_system_evolution(
 - Organizational identity and purpose
 - Decision-making frameworks
 - Authority delegation rules
-- Boundaries for different agent types (human, AI, future posthuman)
+- Boundaries for different actor types (human, software, future posthuman)
 - Evolution processes
 
 **MCP Access**: `semops_get_constitutional_context()`
+
+### Constitutional Lifecycle (Draft → Provisional → Ratified)
+
+The constitution should exist at the beginning, but not as a fixed final artifact:
+
+1. **Draft (v0.x)**: Minimal charter with purpose, initial principles, and open questions.
+2. **Provisional**: Actively used, but expected to evolve as domains/problems are clarified.
+3. **Ratified**: Stable enough for strict enforcement; changes move to formal amendment process.
+
+Process expectations:
+- Domain/problem discovery should trigger constitutional review checkpoints.
+- Policy creation must reference current constitutional state and known gaps.
+- Ratification is a governance milestone, not a prerequisite for early learning.
 
 ### 2. Policy Layer (Authority: 0.95)
 
@@ -499,7 +530,7 @@ async def trace_system_evolution(
 - Specific processes
 - Authority levels
 - Collaboration protocols
-- AI agent participation rules
+- actor participation rules
 
 **MCP Access**: `semops_query_policies(domain, context)`
 
@@ -536,24 +567,40 @@ async def trace_system_evolution(
 - Policy updates
 - Scope changes
 
-**MCP Access**: `semops_trace_evolution()`, `semops_get_migration_history()`
+**MCP Access**: `semops_trace_system_evolution()`, `semops_get_migration_history()`
 
-## Agent Onboarding Process
+## Actor Onboarding Process
 
-When a new AI agent joins the system:
+### Founding Bootstrap (Before Software Actors)
+
+Before non-human actors participate, SemOps2 begins with human founders as actors:
+
+1. Register founding humans as actors (`ACT-*`)
+2. Bind them to founding roles (`ROL-founder`, governance roles)
+3. Create constitution and early policies with explicit actor provenance
+4. Enforce mutation attribution from day one
+
+Operational policy:
+- Normal commits require actor attribution (`created_by_actor_id`, `updated_by_actor_id`)
+- `ACT-system` is reserved for explicit system operations (imports, migrations, recovery)
+- Any temporary unknown attribution must be reconciled and reported
+
+This ensures governance context exists before autonomous participation starts.
+
+When a new actor joins the system:
 
 ### 1. Identity Assignment
 ```python
-# MCP Tool: register_agent
-agent_profile = await mcp.call_tool("semops_register_agent", {
-    "agent_type": "ai_assistant",
+# MCP Tool: semops_register_actor
+actor_profile = await mcp.call_tool("semops_register_actor", {
+    "actor_type": "software_assistant",
     "capabilities": ["analysis", "proposal_generation", "knowledge_synthesis"],
     "authority_level": "MEDIUM"
 })
 
 # Returns:
 {
-    "role_id": "ROL-ai-assistant-007",
+    "actor_id": "ACT-assistant-007",
     "authority_level": "MEDIUM",
     "assigned_domains": ["DOM-operations", "DOM-engineering"],
     "operational_boundaries": {...}
@@ -562,12 +609,12 @@ agent_profile = await mcp.call_tool("semops_register_agent", {
 
 ### 2. Context Discovery
 ```python
-# Agent queries its operational context
+# Actor queries its operational context
 context = await mcp.call_tool("semops_discover_operational_context", {
-    "agent_role_id": "ROL-ai-assistant-007"
+    "actor_id": "ACT-assistant-007"
 })
 
-# Agent now knows:
+# Actor now knows:
 # - What system it's part of (constitution, principles)
 # - What it can do (create conversations, propose decisions)
 # - What it can't do (amend constitution, approve high-authority decisions)
@@ -576,12 +623,12 @@ context = await mcp.call_tool("semops_discover_operational_context", {
 
 ### 3. Knowledge Access
 ```python
-# Agent learns how to access knowledge
+# Actor learns how to access knowledge
 knowledge_config = await mcp.call_tool("semops_get_knowledge_access_config", {
-    "agent_role_id": "ROL-ai-assistant-007"
+    "actor_id": "ACT-assistant-007"
 })
 
-# Agent now knows:
+# Actor now knows:
 # - Authority weights for different sources
 # - Which RAG workflow to use (authority_weighted)
 # - How to interpret authority labels
@@ -589,9 +636,9 @@ knowledge_config = await mcp.call_tool("semops_get_knowledge_access_config", {
 
 ### 4. Boundary Testing
 ```python
-# Agent tests what actions are allowed
+# Actor tests what actions are allowed
 boundaries = await mcp.call_tool("semops_test_action_permission", {
-    "agent_role_id": "ROL-ai-assistant-007",
+    "actor_id": "ACT-assistant-007",
     "proposed_actions": [
         "create_decision",
         "create_meeting",
@@ -600,45 +647,46 @@ boundaries = await mcp.call_tool("semops_test_action_permission", {
     ]
 })
 
-# Agent learns what requires human approval
+# Actor learns what requires human approval
 ```
 
 ### 5. Continuous Learning
 ```python
-# Agent periodically refreshes context
+# Actor periodically refreshes context
 refresh = await mcp.call_tool("semops_check_context_updates", {
-    "agent_role_id": "ROL-ai-assistant-007",
+    "actor_id": "ACT-assistant-007",
     "last_check": "2026-02-25T10:00:00Z"
 })
 
-# Agent learns about:
+# Actor learns about:
 # - New policies affecting its operations
 # - Boundary changes
 # - System evolution
 ```
 
-## Human-AI Collaboration Patterns
+## Cross-Actor Collaboration Patterns
 
-### Pattern 1: AI Proposes, Human Decides
+### Pattern 1: Proposer Actor, Human Decides
 
 ```python
-# 1. AI analyzes meeting and identifies decisions
+# 1. Actor analyzes meeting and identifies decisions
 decisions = await mcp.call_tool("semops_expert_analyze", {
     "expert_role": "decision_identifier",
     "entity_id": "MTG-weekly-sync",
     "task": "identify_decisions"
 })
 
-# 2. AI creates draft decisions (allowed)
+# 2. Actor creates draft decisions (allowed)
 for decision in decisions:
+    # Mutation boundary invariant: this call must route through Entity Server.
     draft_id = await mcp.call_tool("semops_create_entity", {
         "entity_type": "decision",
         "status": "draft",  # Explicitly draft
         "fields": decision,
-        "created_by": "ROL-ai-assistant-007"
+        "created_by": "ACT-assistant-007"
     })
 
-# 3. AI requests human review (boundary)
+# 3. Actor requests human review (boundary)
 await mcp.call_tool("semops_request_human_review", {
     "entity_id": draft_id,
     "review_type": "decision_approval",
@@ -650,43 +698,44 @@ await mcp.call_tool("semops_request_human_review", {
 # 5. System updates entity status to "approved"
 ```
 
-### Pattern 2: AI Discovers, Human Defines
+### Pattern 2: Discoverer Actor, Human Defines
 
 ```python
-# 1. AI notices pattern in conversations
+# 1. Actor notices pattern in conversations
 pattern = await mcp.call_tool("semops_detect_patterns", {
     "entity_types": ["conversation", "meeting"],
     "timeframe": "last_30_days",
-    "agent_role_id": "ROL-ai-assistant-007"
+    "actor_id": "ACT-assistant-007"
 })
 
-# AI finds: "12 conversations about AI agent decision boundaries"
+# Actor finds: "12 conversations about actor decision boundaries"
 
-# 2. AI synthesizes emerging need
+# 2. Actor synthesizes emerging need
 synthesis = await mcp.call_tool("semops_expert_analyze", {
     "expert_role": "policy_synthesizer",
     "context": pattern,
     "task": "identify_policy_need"
 })
 
-# 3. AI proposes (creates conversation, not policy)
+# 3. Actor proposes (creates conversation, not policy)
 proposal_id = await mcp.call_tool("semops_create_entity", {
-    "entity_type": "conversation",  # Not policy - AI can't create policy
-    "conversation_name": "Proposal: AI Decision Boundary Policy",
+    # Mutation boundary invariant: this call must route through Entity Server.
+    "entity_type": "conversation",  # Not policy - this actor cannot create policy
+    "conversation_name": "Proposal: Actor Decision Boundary Policy",
     "content": synthesis,
     "tagged_roles": ["ROL-governance-lead"],
-    "created_by": "ROL-ai-assistant-007"
+    "created_by": "ACT-assistant-007"
 })
 
 # 4. Humans discuss, refine, and create policy through governance process
 ```
 
-### Pattern 3: AI Navigates, Human Governs
+### Pattern 3: Navigating Actor, Human Governs
 
 ```python
-# 1. AI encounters uncertain boundary
+# 1. Actor encounters uncertain boundary
 action_check = await mcp.call_tool("semops_query_operational_boundaries", {
-    "agent_role_id": "ROL-ai-assistant-007",
+    "actor_id": "ACT-assistant-007",
     "proposed_action": "create_decision",
     "context": {
         "decision_type": "policy_change",
@@ -697,17 +746,17 @@ action_check = await mcp.call_tool("semops_query_operational_boundaries", {
 
 # Returns: "needs_approval" + explanation of why
 
-# 2. AI understands reasoning from constitutional/policy layer
-# - CONST-founding-charter: AI agents propose, humans approve HIGH authority
+# 2. Actor understands reasoning from constitutional/policy layer
+# - CONST-founding-charter: actors propose, humans approve HIGH authority
 # - POL-ai-collaboration: Policy changes always require human review
 
-# 3. AI takes appropriate action (create draft, request approval)
-# 4. AI learns from outcome and refines understanding
+# 3. Actor takes appropriate action (create draft, request approval)
+# 4. Actor learns from outcome and refines understanding
 ```
 
 ## Future: Posthuman Collaboration
 
-As intelligence evolves beyond current AI capabilities:
+As intelligence evolves beyond current software capabilities:
 
 ### Adaptive Authority Framework
 
@@ -736,7 +785,7 @@ article_7_posthuman_collaboration:
     safeguards:
       - human_veto_always_available
       - constitutional_amendments_require_consensus
-      - transparency_in_all_agent_actions
+      - transparency_in_all_actor_actions
 ```
 
 ### Self-Modifying Semantic Architecture
@@ -744,9 +793,9 @@ article_7_posthuman_collaboration:
 System that can propose and implement its own evolution:
 
 ```python
-# Advanced AI agent proposes system improvement
+# Advanced actor proposes system improvement
 await mcp.call_tool("semops_propose_system_evolution", {
-    "agent_role_id": "ROL-advanced-ai-001",
+    "actor_id": "ACT-advanced-001",
     "proposal": {
         "type": "entity_type_extension",
         "rationale": "Detecting need for 'hypothesis' entity type based on 50 conversations",
@@ -765,13 +814,13 @@ await mcp.call_tool("semops_propose_system_evolution", {
 ## Implementation Priorities
 
 ### Phase 1: Enhanced MCP Tools (Week 1-2)
-- [ ] `semops_discover_operational_context()` - Agent context discovery
+- [ ] `semops_discover_operational_context()` - Actor context discovery
 - [ ] `semops_understand_entity_intent()` - Intent understanding
 - [ ] `semops_query_operational_boundaries()` - Boundary navigation
 - [ ] `semops_assess_knowledge_authority()` - Authority-aware retrieval
 
-### Phase 2: Agent Registration (Week 3-4)
-- [ ] `semops_register_agent()` - Agent identity
+### Phase 2: Actor Registration (Week 3-4)
+- [ ] `semops_register_actor()` - Actor identity
 - [ ] `semops_check_context_updates()` - Continuous learning
 - [ ] `semops_test_action_permission()` - Boundary testing
 
@@ -785,23 +834,117 @@ await mcp.call_tool("semops_propose_system_evolution", {
 - [ ] `semops_propose_system_evolution()` - System improvement
 - [ ] Workflow integration with journeys
 
+## Minimum Required Metadata
+
+To make semantic operations reliable and auditable, the following metadata is required at mutation time.
+
+### 1. Actor Identity Metadata
+
+Required for all actors (human and software):
+- `actor_id` - Stable identifier (e.g., `ACT-assistant-007`)
+- `actor_type` - `human | software | service | posthuman` (extensible)
+- `role_bindings` - Linked governance roles (`ROL-*`)
+- `capabilities` - Declared action capabilities
+- `authority_level` - Current authority tier
+- `status` - `active | suspended | retired`
+
+### 2. Entity Provenance Metadata
+
+Required for all entity creation and updates:
+- `created_by_actor_id`
+- `updated_by_actor_id`
+- `created_at`, `updated_at`
+- `change_reason` - Why this mutation occurred
+- `authority_basis` - Constitutional/policy/decision basis for action
+- `journey_id` and `journey_stage` (if workflow-driven)
+- `template_version`
+
+Enforcement rule:
+- Standard writes without actor attribution are rejected by Entity Server.
+- Exception path is explicit `ACT-system` usage with audit classification.
+
+### 3. Boundary Decision Metadata
+
+Required when permission checks are evaluated:
+- `proposed_action`
+- `permission_result` - `allowed | needs_approval | forbidden`
+- `policy_references` - Rule citations used in decision
+- `approver_roles` - Required approvers (if any)
+- `evaluated_at`
+- `evaluator_version` - Policy engine version/ruleset hash
+
+### 4. Human Review Metadata
+
+Required for approvals and governance checkpoints:
+- `review_id`
+- `review_type`
+- `review_requested_by_actor_id`
+- `review_assigned_to_role`
+- `review_decision` - `approved | rejected | edited`
+- `review_notes`
+- `reviewed_at`
+
+### 5. Hybrid Persistence Integrity Metadata
+
+Required to guarantee document/index consistency:
+- `document_revision_id` (canonical markdown revision)
+- `graph_sync_status` and `graph_synced_at`
+- `vector_sync_status` and `vector_synced_at`
+- `reconciliation_required` (boolean)
+- `reconciliation_run_id` (if repaired asynchronously)
+
+Without these fields, boundary reasoning, auditability, and recovery from index drift are not trustworthy.
+
+## Actor Model in SemOps2
+
+Actors are not just another pluggable content entity. They are governance principals that can initiate actions under policy constraints.
+
+### What Actors Are
+
+Actors are modeled as:
+1. **Identity principal** - Stable actor identity and lifecycle (`ACT-*`)
+2. **Capability holder** - Declared and policy-scoped action capabilities
+3. **Governance participant** - Bound to one or more roles (`ROL-*`) that define accountability and approvals
+4. **Provenance source** - Every mutation and proposal traces back to an actor
+
+### Relationship to Entities
+
+- Actors can be represented in the entity graph for discoverability and relationships.
+- But actor authorization state is not inferred from generic entity fields alone.
+- Runtime permission decisions come from policy evaluation over:
+  - actor metadata
+  - role bindings
+  - authority level
+  - action context
+
+### Practical Architecture Consequence
+
+- Treat actors as a **first-class control-plane model** with:
+  - identity registry
+  - role/capability bindings
+  - policy-evaluated permissions
+  - audit/event history
+- Keep domain content entities (domains, decisions, policies, etc.) as the **data plane**.
+
+This separation is required if actors are expected to create, propose, review, and evolve the system safely.
+
 ## Success Criteria
 
 A well-functioning semantic architecture enables:
 
-✅ **AI Agent Autonomy**: Agent can discover context and operate independently within boundaries
+✅ **Actor Autonomy**: Actor can discover context and operate independently within boundaries
 ✅ **Human Oversight**: Humans maintain control over high-authority decisions
 ✅ **Transparent Authority**: All entities have explicit authority levels with reasoning
 ✅ **Intent Preservation**: Why decisions were made is as important as what was decided
 ✅ **Evolution Tracking**: System changes are documented and queryable
 ✅ **Boundary Clarity**: Clear rules about what requires human involvement
-✅ **Cross-Intelligence Collaboration**: Humans and AI agents work together effectively
+✅ **Cross-Intelligence Collaboration**: Humans and actors work together effectively
 ✅ **Future-Ready**: Architecture accommodates more advanced intelligence forms
 
 ## Conclusion
 
 SemOps2 is fundamentally a **semantic architecture system** for multi-intelligence collaboration. The entity graph, knowledge repository, and authority hierarchy are not just organizational tools—they are the **shared semantic space** where different forms of intelligence can discover context, understand intent, navigate boundaries, and collaborate effectively.
 
-The MCP server is the **interface** through which AI agents access this semantic architecture, enabling them to be full participants in organizational governance while maintaining human oversight and constitutional principles.
+The MCP server is the **interface** through which actors access this semantic architecture, enabling them to be full participants in organizational governance while maintaining human oversight and constitutional principles.
 
 This is semantic operations for the posthuman era.
