@@ -13,8 +13,8 @@ Create a problem under a domain using context resolution, and verify inherited s
 
 ## Narrative
 1. Strategist decides to formalize a problem under the domain: "Operating Model Fragmentation".
-2. Runs `semops problem create --problem-name "Operating Model Fragmentation"` from the domain directory.
-3. CLI detects context (domain), computes slug `operating-model-fragmentation`, and creates `domain/{domain-slug}/problems/operating-model-fragmentation/problem.md` with a deterministic ID `PROB-operating-model-fragmentation` (kebab-case).
+2. Runs `semops problem create operating-model-fragmentation --name "Operating Model Fragmentation" --part-of DOM-<domain-slug>` from the domain directory.
+3. CLI computes slug `operating-model-fragmentation`, creates `problems/operating-model-fragmentation/problem.md` with a deterministic ID `PROB-operating-model-fragmentation` (kebab-case), and records a relationship to the domain.
 4. Strategist lists effective sources at the problem level.
 5. CLI shows domain-attached sources as `inherited` with provenance set to the domain.
 
@@ -28,7 +28,7 @@ flowchart TD
     A[Start] --> B[User runs semops problem create]
     B --> C[Detect context (domain)]
     C --> D[Compute slug + ID]
-    D --> E[Render template + write domain/{domain-slug}/problems/{problem-slug}/problem.md]
+    D --> E[Render template + write problems/{problem-slug}/problem.md]
     E --> F[User runs semops sources list --entity problem]
     F --> G[Resolve inherited sources from domain]
     G --> H[Display effective sources with provenance]

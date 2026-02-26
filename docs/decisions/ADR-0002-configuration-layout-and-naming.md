@@ -75,7 +75,9 @@ To keep CLI usage readable and config parsing predictable, SemOps2 standardizes 
 1. Only `.semops/config/*.yaml` paths are supported.
 2. Flat `.semops/*.yaml` paths are not supported.
 3. Loader behavior is strict: non-canonical locations fail fast with a clear error.
-4. No migration or backward-compatibility behavior is required for config paths.
+4. No migration or backward-compatibility behavior is required for legacy config path conventions.
+
+This clean-slate policy does not apply to **template evolution**. SemOps2 supports template migrations (e.g., migrating entities between template versions) as an essential function.
 
 ## Consequences
 
@@ -95,7 +97,7 @@ This decision is auditable when:
 
 1. All contributor-facing docs use `.semops/config/*.yaml` paths.
 2. Loader behavior is documented and tested as strict path validation.
-3. Integration tests validate canonical path discovery from nested directories.
+3. Integration tests validate canonical path discovery when invoked from subdirectories within a workspace.
 4. Integration tests assert that non-canonical config paths fail with actionable errors.
 
 ## Follow-Up Updates

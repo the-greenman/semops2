@@ -50,9 +50,6 @@ entity_types:
     filename_pattern: "{entity_type}.md"    # → domain.md
     nesting_strategy: "root"
 
-    parent_entity: null
-    child_entities: []                      # Relationships declared in relationship_types below
-
     required_fields: ["domain_name", "brief_description"]
     unique_fields: ["domain_name", "domain_slug"]
     context_level: 1
@@ -63,6 +60,36 @@ entity_types:
     analyze_command: true
     display_name: "Domain"
     description: "Bounded operational areas with assigned roles and governance"
+
+  # ── semops.core/library ──────────────────────────────────────────────────
+  # Curated reference library of sources (URLs, PDFs, transcripts, etc.) that can
+  # be linked to domains for reuse and scoped retrieval.
+
+  library:
+    namespace: "semops.core"
+    id_prefix: "LIB"
+    name_field: "library_name"
+    slug_field: "library_slug"
+
+    template_bundle:
+      create: "library.md.j2"
+      prompts:
+        summarize: "prompts/library-summarize.txt"
+
+    directory_name: "libraries"
+    filename_pattern: "{entity_type}.md"
+    nesting_strategy: "root"
+
+    required_fields: ["library_name"]
+    unique_fields: ["library_slug"]
+    context_level: 1
+
+    list_command: true
+    get_command: true
+    create_command: true
+    analyze_command: false
+    display_name: "Library"
+    description: "Curated reference libraries of sources used for retrieval and analysis"
 
   # ── semops.core/role ─────────────────────────────────────────────────────
   # A person or group with defined accountability. Flat root collection;
@@ -83,9 +110,6 @@ entity_types:
     directory_name: "roles"
     filename_pattern: "{entity_type}.md"
     nesting_strategy: "root"
-
-    parent_entity: null
-    child_entities: []
 
     required_fields: ["role_name"]
     unique_fields: ["role_name", "role_slug"]
@@ -120,9 +144,6 @@ entity_types:
     filename_pattern: "{entity_type}.md"
     nesting_strategy: "root"
 
-    parent_entity: null
-    child_entities: []
-
     required_fields: ["meeting_name", "meeting_date"]
     unique_fields: ["meeting_slug"]
     context_level: 1
@@ -156,9 +177,6 @@ entity_types:
     filename_pattern: "{entity_type}.md"
     nesting_strategy: "root"
 
-    parent_entity: null
-    child_entities: []
-
     required_fields: ["decision_name", "decision_date", "status"]
     unique_fields: ["decision_slug"]
     context_level: 1
@@ -191,9 +209,6 @@ entity_types:
     filename_pattern: "{entity_type}.md"
     nesting_strategy: "root"
 
-    parent_entity: null
-    child_entities: []
-
     required_fields: ["conversation_name"]
     unique_fields: ["conversation_slug"]
     context_level: 1
@@ -224,9 +239,6 @@ entity_types:
     filename_pattern: "{entity_type}.md"
     nesting_strategy: "root"
 
-    parent_entity: null
-    child_entities: []
-
     required_fields: ["artefact_name", "artefact_type"]
     unique_fields: ["artefact_slug"]
     context_level: 1
@@ -241,8 +253,9 @@ entity_types:
 
 # ── Relationship Types ────────────────────────────────────────────────────────
 #
-# Typed, directed relationships between entity instances. These replace the
-# old child_entities/parent_entity tree model for graph-style connections.
+# Typed, directed relationships between entity instances.
+# Filesystem layout remains flat root collections; structure is expressed via
+# these relationship types (graph-style connections).
 #
 # Fields:
 #   namespace       - Reverse-DNS namespace owning this relationship type
@@ -330,6 +343,16 @@ relationship_types:
     cardinality: many_to_many
     required: false
     share_sources: true
+    max_depth: 1
+
+  # A library provides reference material for a domain
+  library_for:
+    namespace: "semops.core"
+    from_types: ["semops.core/library"]
+    to_types: ["semops.core/domain"]
+    cardinality: many_to_one
+    required: false
+    share_sources: true          # library sources propagate into the domain's effective sources
     max_depth: 1
 
 

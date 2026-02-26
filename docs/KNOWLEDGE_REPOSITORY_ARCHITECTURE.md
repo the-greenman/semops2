@@ -43,7 +43,7 @@ vector_store = ChromaDB(embedding_model="sentence-transformers/all-MiniLM-L6-v2"
 ### Source Type Configuration System
 
 ```yaml
-# config/source_types.yaml
+# .semops/config/source_types.yaml
 source_types:
   # Web Content Sources
   web_content:

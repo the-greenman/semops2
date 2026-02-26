@@ -1,9 +1,11 @@
 # Migration Plan (Retired)
 
-The previous SemOps v1 → v2 migration plan has been removed.
+The previous SemOps v1 → SemOps2 migration plan has been removed.
 
-This repository now follows a clean-slate experimental mode:
+SemOps2 **does** support template evolution and template migration workflows (e.g., migrating entities from template `v1.0.0` to `v1.1.0`). Template migration is an essential SemOps function.
 
-- No backward-compatibility guarantees for old config or data formats.
-- No migration workflow is maintained for legacy SemOps v1 artifacts.
+This repository follows a clean-slate experimental mode specifically for SemOps v1 legacy artifacts:
+
+- No backward-compatibility guarantees for SemOps v1 config or data formats.
+- No SemOps v1 → SemOps2 migration workflow is maintained.
 - Current architecture decisions are tracked in `docs/decisions/`.

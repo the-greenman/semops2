@@ -318,9 +318,7 @@ entity_types:
     filename_pattern: "{entity_type}.md"    # → domain.md for context detection
     nesting_strategy: "root"
 
-    # Hierarchy — null parent means root collection
-    parent_entity: null
-    child_entities: []                      # Ops entities relate via relationship_types, not nesting
+    # Entity-to-entity structure is expressed via relationship_types
 
     # Validation
     required_fields: ["domain_name", "brief_description"]
@@ -347,8 +345,6 @@ entity_types:
     directory_name: "roles"
     filename_pattern: "{entity_type}.md"
     nesting_strategy: "root"                # Flat root collection — roles are cross-cutting
-    parent_entity: null
-    child_entities: []
     required_fields: ["role_name"]
     context_level: 1
     list_command: true
@@ -372,8 +368,6 @@ entity_types:
     directory_name: "meetings"
     filename_pattern: "{entity_type}.md"
     nesting_strategy: "root"
-    parent_entity: null
-    child_entities: []
     required_fields: ["meeting_name", "meeting_date"]
     context_level: 1
     list_command: true
@@ -398,8 +392,6 @@ entity_types:
     directory_name: "decisions"
     filename_pattern: "{entity_type}.md"
     nesting_strategy: "root"
-    parent_entity: null
-    child_entities: []
     required_fields: ["decision_name", "decision_date", "status"]
     context_level: 1
     list_command: true
@@ -422,8 +414,6 @@ entity_types:
     directory_name: "conversations"
     filename_pattern: "{entity_type}.md"
     nesting_strategy: "root"
-    parent_entity: null
-    child_entities: []
     required_fields: ["conversation_name"]
     context_level: 1
     list_command: true
@@ -445,8 +435,6 @@ entity_types:
     directory_name: "artefacts"
     filename_pattern: "{entity_type}.md"
     nesting_strategy: "root"
-    parent_entity: null
-    child_entities: []
     required_fields: ["artefact_name", "artefact_type"]
     context_level: 1
     list_command: true
@@ -459,7 +447,12 @@ entity_types:
 
 ### Relationship Types
 
-Relationships between entity instances are declared in a separate `relationship_types` section. This replaces the old `child_entities`/`parent_entity` approach for graph-style connections. Each relationship type specifies which entity types may participate, cardinality, and whether knowledge sources are shared across the link.
+Relationships between entity instances are declared in a separate `relationship_types` section. Each relationship type specifies which entity types may participate, cardinality, and whether knowledge sources are shared across the link.
+
+Relationship types have two representations:
+
+- **Short key** (CLI / journeys): `part_of`, `made_in`, `affects`
+- **Fully-qualified key** (stored on the relationship record and in documents): `{namespace}/{type_key}` (e.g., `semops.core/part_of`)
 
 ```yaml
 relationship_types:
@@ -534,7 +527,11 @@ relationship_types:
     max_depth: 1
 ```
 
-Relationship instances are stored as `EntityRelationship` records (defined in `services.proto`) and resolved at query time. The `relationship_type` field on `EntityRelationship` carries the fully-qualified key `{namespace}/{type_key}`.
+Relationship instances are **canonical, first-class records** stored as `EntityRelationship` messages (defined in `services.proto`).
+
+While relationship links may also be reflected in entity document YAML frontmatter for human readability, the authoritative boundary for creating/updating/deleting relationships is the `EntityService` interface (CLI/API/MCP). This ensures deterministic validation against configured `relationship_types`, correct namespace resolution (short key → fully-qualified key), and consistent projection updates.
+
+The `relationship_type` field on `EntityRelationship` carries the fully-qualified key `{namespace}/{type_key}`.
 
 ### Third-Party Entity Types
 
@@ -823,10 +820,10 @@ class KnowledgeService:
 
 To differentiate between authoritative sources (e.g., official documentation) and conversational ones (e.g., meeting notes), the system supports source weighting.
 
-1.  **Configuration**: A `weight` attribute (e.g., 0.0 to 1.0) is added to each source type in `config/source_types.yaml` to represent its authority.
+1.  **Configuration**: A `weight` attribute (e.g., 0.0 to 1.0) is added to each source type in `.semops/config/source_types.yaml` to represent its authority.
 
     ```yaml
-    # config/source_types.yaml
+    # .semops/config/source_types.yaml
     source_types:
       official_documentation:
         weight: 1.0
@@ -973,12 +970,12 @@ class MCPToolGenerator:
         return base_schema
 ```
 
-### 6. Context-Aware Operations with Nested Hierarchy
+### 6. Context-Aware Operations with Flat Collections
 
 ```python
 class ContextDetector:
     def detect_context(self) -> Optional[Context]:
-        """Detect current semantic context from nested directory structure."""
+        """Detect current semantic context from type-based filenames in flat collections."""
         path = Path.cwd()
         context = Context()
 
@@ -1001,12 +998,7 @@ class ContextDetector:
 
     def _extract_entity_info(self, path: Path, entity_type: str, config: EntityConfig) -> Dict:
         """Extract entity information from directory path and file."""
-        if config.nesting_strategy == "root":
-            # Root entity: domain/cloud-security/ → slug = cloud-security
-            slug = path.name
-        else:
-            # Nested entity: problems/compliance-challenges/ → slug = compliance-challenges
-            slug = path.name
+        slug = path.name
 
         entity_id = f"{config.id_prefix}-{slug}"
 
@@ -1017,7 +1009,7 @@ class ContextDetector:
             'path': path,
             'file_path': path / config.filename_pattern.format(entity_type=entity_type),
             'parent_path': self._get_parent_path(path, config),
-            'nesting_level': config.context_level
+            'context_level': config.context_level
         }
 
     def auto_resolve_entity_id(self, entity_type: str) -> Optional[str]:
@@ -1028,7 +1020,7 @@ class ContextDetector:
         return None
 
     def get_context_hierarchy(self) -> Dict[str, Any]:
-        """Get full hierarchical context from nested structure."""
+        """Get context from filesystem markers and relationship traversal."""
         context = self.detect_context()
         if not context:
             return {}
@@ -1050,20 +1042,10 @@ class Context:
         self.entities[entity_type] = entity_info
 
     def build_hierarchy(self) -> 'Context':
-        """Build parent-child relationships from nested structure."""
-        # Sort by nesting level (domain=1, problem=2, persona=3, etc.)
-        sorted_entities = sorted(
-            self.entities.items(),
-            key=lambda x: x[1]['nesting_level']
-        )
+        """No-op for flat collections.
 
-        # Build parent relationships
-        for i, (entity_type, entity_info) in enumerate(sorted_entities):
-            if i > 0:  # Not root entity
-                parent_type, parent_info = sorted_entities[i-1]
-                entity_info['parent_id'] = parent_info['entity_id']
-                entity_info['parent_type'] = parent_type
-
+        Entity-to-entity structure is expressed via relationship types rather than directory nesting.
+        """
         return self
 
     def get_current_entity(self) -> Dict:
@@ -1152,10 +1134,14 @@ context:
 
 SemOps2 treats knowledge sources as first-class, configurable resources that can be associated at any entity level. The model supports inheritance, overrides, and cross-domain relationships while preserving a clear and deterministic resolution algorithm.
 
+Domains can be linked to one or more **libraries**: dedicated entities whose primary purpose is to own and curate source lists (remote URLs, PDFs, meeting transcripts, etc.). Libraries are a core capability and provide a stable unit for source list management and retrieval scoping.
+
+At the simplest level, a workspace can consist of domains, actor identities (roles), and domain-linked libraries. Even without adding additional entity types, this provides a structured way to share and evolve domain-specific reference libraries.
+
 #### Concepts
 
 - Source Types
-  - Defined in `config/source_types.yaml` with extractor/processor/chunker pipelines
+  - Defined in `.semops/config/source_types.yaml` with extractor/processor/chunker pipelines
   - Examples: `web_page`, `pdf`, `markdown_note`, `repo`, `api`, `dataset`
 - Source Instance
   - A concrete source item with metadata and a stable `source_id` (URL-hash-based)
@@ -1163,13 +1149,18 @@ SemOps2 treats knowledge sources as first-class, configurable resources that can
   - Explicit links between a source instance and one or more entities
   - Scope can be `attached` (direct) or `inherited` (via ancestors)
 
+- Library (core entity type)
+  - A curated source list owned as a first-class entity
+  - Linked to domains via `library_for` so library sources propagate into the domain's effective source scope
+  - Used as an explicit scoping target for RAG retrieval (retrieve over a library’s sources)
+
 #### Configuration
 
 - Root entity types are configurable (default: `domain`). Multiple roots are supported.
 - Per source type, define which entity types it can attach to and default scope behavior.
 
 ```yaml
-# config/source_types.yaml
+# .semops/config/source_types.yaml
 source_types:
   web_page:
     extractor: web
@@ -1220,6 +1211,15 @@ Given an `entity_context` (resolved by `ContextDetector`), compute `effective_so
 
 Always display a summary of resolved context and effective source counts before write operations that depend on them.
 
+#### Library Management (API Boundary)
+
+Libraries and their source lists must be managed through the service interface (CLI/API/MCP), not by manually editing files.
+
+- **Create a library entity** via `EntityService.CreateEntity` (entity type: `library`).
+- **Attach sources to a library** via `KnowledgeService.AddSource` with `entity_ids` including the library `EntityID`.
+- **List sources for a library** via `KnowledgeService.ListSources` filtered by the library `EntityID`.
+- **Run retrieval scoped to a library** via `KnowledgeService.Retrieve` with `context_entity_id` set to the library `EntityID` and a configured RAG workflow.
+
 #### IDs and Metadata
 
 - Source IDs must be stable and deterministic (URL-hash-based or content-hash-based) to avoid drift between runs.
@@ -1263,10 +1263,10 @@ SemOps2 uses **two distinct graph stores** with different schemas, owners, and q
 | **Source sharing** | N/A — knowledge graph does not drive inheritance | `share_sources: true` on relationship types drives source resolution |
 
 **Rules:**
-1. **Canonical write path is file-first**: `EntityService` persists canonical `EntityDocument` markdown/frontmatter first.
-2. `knowledge_graph` and `entity_graph` are **derived projections** maintained from canonical documents (synchronous or queued with guaranteed reconciliation).
+1. **Canonical entities and relationships**: `EntityService` persists canonical `EntityDocument` markdown/frontmatter and canonical `EntityRelationship` records.
+2. `knowledge_graph` and `entity_graph` are **derived projections** maintained from canonical documents and canonical relationships (synchronous or queued with guaranteed reconciliation).
 3. `KnowledgeService` reads/writes only the `knowledge_graph` projection. It never traverses `entity_graph` directly.
-4. `EntityService` manages `entity_graph` projection updates for relationship traversal use cases, but `entity_graph` is not the canonical source of truth.
+4. `EntityService` manages `entity_graph` projection updates for relationship traversal use cases, but `entity_graph` is not the canonical source of truth (it is a projection).
 5. When a `KnowledgeService` retrieval needs entity context (e.g. "find sources relevant to this decision"), it receives the `EntityID` as a scope parameter and resolves attached `entity_ids` from `KnowledgeSource` records rather than traversing `entity_graph`.
 6. The `graph_enhanced` RAG workflow expands through `knowledge_graph`. The `entity_graph_traversal` workflow expands through `entity_graph` to gather related entity IDs, then scopes a vector search.
 

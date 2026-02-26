@@ -21,12 +21,9 @@ entity_types:
     directory_name: "{plural_name}"  # Directory name for entity files
     filename_pattern: "{entity_type}.md" # Type-based filename for context detection
 
-    # Hierarchy & Nesting Configuration
-    parent_entity: "parent_type"     # Parent entity type (null for root)
-    child_entities: ["child1", "child2"] # List of child entity types
-    nesting_strategy: "nested_directories" # "root" or "nested_directories"
-    scoped_to_parent: true           # Entity scoped to specific parent instance
-    context_level: 1                 # Depth in hierarchy (1=root)
+    # Structure Configuration
+    nesting_strategy: "root"        # "root" collections only
+    context_level: 1                 # Optional UI ordering, not filesystem hierarchy
 
     # Validation Configuration
     required_fields: ["field1"]     # Required fields for entity creation
@@ -58,8 +55,6 @@ domain:
   template: "domain.md.j2"
   directory_name: "domain"
   filename_pattern: "{entity_type}.md"    # → domain.md for context detection
-  parent_entity: null
-  child_entities: ["problem", "solution"]
   nesting_strategy: "root"                # Root entity type
   scoped_to_parent: false
   context_level: 1
@@ -79,10 +74,8 @@ problem:
   template: "problem.md.j2"
   directory_name: "problems"
   filename_pattern: "{entity_type}.md"    # → problem.md for context detection
-  parent_entity: "domain"
-  child_entities: ["persona"]
-  nesting_strategy: "nested_directories"  # Creates problems/{slug}/problem.md
-  scoped_to_parent: true                  # Problem must exist within specific domain
+  nesting_strategy: "root"                # Flat collections
+  scoped_to_parent: false                  # Link to domains via relationships
   context_level: 2
   required_fields: ["problem_name", "domain_id"]
   unique_fields: ["problem_name"]
@@ -100,10 +93,8 @@ persona:
   template: "persona.md.j2"
   directory_name: "personas"
   filename_pattern: "{entity_type}.md"    # → persona.md for context detection
-  parent_entity: "problem"
-  child_entities: []
-  nesting_strategy: "nested_directories"  # Creates personas/{slug}/persona.md
-  scoped_to_parent: true                  # Persona scoped to specific problem
+  nesting_strategy: "root"                # Flat collections
+  scoped_to_parent: false                  # Link to problems via relationships
   context_level: 3
   required_fields: ["persona_name", "problem_id"]
   unique_fields: ["persona_name"]
@@ -121,10 +112,8 @@ product:
   template: "product.md.j2"
   directory_name: "products"
   filename_pattern: "{entity_type}.md"    # → product.md for context detection
-  parent_entity: "persona"
-  child_entities: []
-  nesting_strategy: "nested_directories"  # Creates products/{slug}/product.md
-  scoped_to_parent: true                  # Product scoped to specific persona
+  nesting_strategy: "root"                # Flat collections
+  scoped_to_parent: false                  # Link to personas via relationships
   context_level: 4
   required_fields: ["product_name", "persona_id"]
   unique_fields: ["product_name"]
@@ -144,10 +133,8 @@ solution:
   template: "solution.md.j2"
   directory_name: "solutions"
   filename_pattern: "{entity_type}.md"    # → solution.md for context detection
-  parent_entity: "domain"                 # Solutions belong to domains
-  child_entities: ["feature"]
-  nesting_strategy: "nested_directories"  # Creates solutions/{slug}/solution.md
-  scoped_to_parent: true                  # Solution scoped to specific domain
+  nesting_strategy: "root"                # Flat collections
+  scoped_to_parent: false                  # Link to domains via relationships
   context_level: 2
   required_fields: ["solution_name", "domain_id"]
   display_name: "Solution"
@@ -164,10 +151,8 @@ feature:
   template: "feature.md.j2"
   directory_name: "features"
   filename_pattern: "{entity_type}.md"    # → feature.md for context detection
-  parent_entity: "solution"
-  child_entities: []
-  nesting_strategy: "nested_directories"  # Creates features/{slug}/feature.md
-  scoped_to_parent: true                  # Feature scoped to specific solution
+  nesting_strategy: "root"                # Flat collections
+  scoped_to_parent: false                  # Link to solutions via relationships
   context_level: 3
   required_fields: ["feature_name", "solution_id"]
   display_name: "Feature"
@@ -182,14 +167,14 @@ The system supports alternative hierarchy patterns:
 ### Multiple Parents
 ```yaml
 product:
-  parent_entity: ["persona", "problem"]  # Product can belong to either
+  nesting_strategy: "root"
 ```
 
 ### Cross-References
 ```yaml
 integration:
   id_prefix: "INT"
-  parent_entity: null  # Root level
+  nesting_strategy: "root"
   references: ["product", "solution"]  # References other entities
 ```
 
@@ -197,49 +182,42 @@ integration:
 ```yaml
 market_segment:
   id_prefix: "SEG"
-  parent_entity: "domain"
-  child_entities: ["persona"]  # Segments contain personas
+  nesting_strategy: "root"
+
+relationship_types:
+  in_segment:
+    namespace: "semops.core"
+    from_types: ["semops.core/persona"]
+    to_types: ["semops.core/market_segment"]
+    share_sources: false
 ```
 
 ## Directory Structure Mapping
 
-Configuration determines nested file system layout:
+Configuration determines file system layout using flat root collections:
 
 ```
-domain/cloud-security/                   # Root domain directory
-├── domain.md                            # Type-based filename for context detection
-├── sources/                             # Domain-level sources
-├── working/                             # Domain analysis files
-├── problems/                            # Problem entity directory
-│   ├── compliance-challenges/           # Problem slug directory
-│   │   ├── problem.md                   # Type-based filename
-│   │   ├── sources/                     # Problem-specific sources
-│   │   ├── working/                     # Problem analysis files
-│   │   └── personas/                    # Personas FOR THIS PROBLEM
-│   │       ├── security-manager/
-│   │       │   ├── persona.md           # Type-based filename
-│   │       │   └── working/
-│   │       └── compliance-officer/
-│   │           ├── persona.md
-│   │           └── working/
-│   └── cost-optimization/               # Different problem
+my-workspace/
+├── domain/
+│   └── cloud-security/
+│       ├── domain.md
+│       └── working/
+├── problems/                            # Optional entity type
+│   └── compliance-challenges/
 │       ├── problem.md
-│       └── personas/                    # Different persona instances
-│           └── budget-controller/
-│               ├── persona.md
-│               └── working/
-└── solutions/                           # Solution entity directory (NEW)
-    └── zero-trust-platform/            # Solution slug directory
-        ├── solution.md                  # Type-based filename
-        ├── sources/                     # Solution-specific sources
-        ├── working/                     # Solution analysis files
-        └── features/                    # Features FOR THIS SOLUTION
-            ├── threat-detection/
-            │   ├── feature.md           # Type-based filename
-            │   └── working/
-            └── compliance-dashboard/
-                ├── feature.md
-                └── working/
+│       └── working/
+├── personas/                            # Optional entity type
+│   └── security-manager/
+│       ├── persona.md
+│       └── working/
+├── solutions/                           # Optional entity type
+│   └── zero-trust-platform/
+│       ├── solution.md
+│       └── working/
+└── features/                            # Optional entity type
+    └── threat-detection/
+        ├── feature.md
+        └── working/
 ```
 
 ## Configuration Validation
@@ -250,7 +228,7 @@ domain/cloud-security/                   # Root domain directory
 validation:
   entity_type_schema: "entity_type.schema.json"
   template_validation: true
-  hierarchy_validation: true
+  hierarchy_validation: false
   uniqueness_validation: true
 ```
 
@@ -276,7 +254,7 @@ Configuration provides template context:
 {
   "entity_type": "domain",
   "id_prefix": "DOM",
-  "parent_id": "PROB-CostOptimization",  # If has parent
+  "parent_id": null,
   "template_id": "TEMPLATE-Domain",
   "template_version": "2.5.3"
 }
@@ -308,11 +286,11 @@ def get_solution(solution_id: Optional[str] = None):
 ### Context Awareness
 ```yaml
 context_detection:
-  # Detection based on type-based filenames and nested structure
+  # Detection based on type-based filenames
   filename_indicators: ["{entity_type}.md"]  # domain.md, problem.md, persona.md
-  nesting_strategy: "nested_directories"     # Physical hierarchy
-  parent_resolution: "auto"                  # Auto-detect from directory structure
-  validation_rules: ["parent_exists", "unique_constraints", "scoped_to_parent"]
+  nesting_strategy: "root"                   # Flat collections
+  parent_resolution: "explicit"              # Relationships, flags, or frontmatter
+  validation_rules: ["unique_constraints"]
 ```
 
 ## Benefits
@@ -386,7 +364,7 @@ Feature: CLI commands are generated from configuration
   Scenario: Create problem with context-resolved parent
     Given my current directory is within a domain folder
     When I run "semops problem create --problem-name 'Cost Shock'"
-    Then a new problem markdown file is created under the domain's problems directory
+    Then a new problem markdown file is created under the flat problems collection
     And the problem frontmatter contains the resolved domain_id
 ```
 
@@ -418,7 +396,7 @@ Feature: Create entities with deterministic IDs and slugs
   I want IDs and slugs to be deterministic
   So that links and paths remain stable
 
-  Scenario Outline: Create entity produces stable ID, slug, and nested structure
+  Scenario Outline: Create entity produces stable ID, slug, and structure
     Given a clean workspace
     And configuration defines <entity_type> with id_prefix, nesting_strategy, and kebab-case slugs
     When I create a <entity_type> named "My Example Entity"
@@ -454,7 +432,7 @@ Feature: CLI commands support updating and deleting entities
   Scenario: Force delete an entity without a prompt
     Given a problem with ID "PROB-to-be-deleted" exists
     When I run "semops problem delete --id PROB-to-be-deleted --force"
-    Then the entity's directory and all its contents are removed
+    Then the entity file and its directory are removed
 ```
 
 ### Feature: Context Detection
@@ -466,23 +444,20 @@ Feature: Detect context from current directory
   So that commands can infer IDs without explicit flags
 
   Background:
-    Given a domain with nested problems and personas exists on disk
+    Given a domain exists on disk
 
-  Scenario: Detect nested context from type-based filenames
-    Given my current directory is "/domain/cloud-security/problems/compliance-challenges/personas/security-manager/"
-    And the directory contains "persona.md" file
+  Scenario: Detect context from type-based filenames
+    Given my current directory is "/domain/cloud-security/"
+    And the directory contains "domain.md" file
     When I ask for the current context
-    Then the context includes entity_type "persona" with ID "PERS-security-manager"
-    And the hierarchy includes problem "PROB-compliance-challenges"
-    And the hierarchy includes domain "DOM-cloud-security"
+    Then the context includes entity_type "domain" with ID "DOM-cloud-security"
     And all relationships are scoped correctly
 
-  Scenario: Context detection works at any nesting level
-    Given my current directory is "/domain/cloud-security/solutions/zero-trust-platform/features/threat-detection/"
+  Scenario: Context detection works in deep working directories
+    Given my current directory is "/features/threat-detection/working/"
     And the directory contains "feature.md" file
     When I ask for the current context
     Then the context includes entity_type "feature" with ID "FEAT-threat-detection"
-    And the hierarchy includes solution "SOL-zero-trust-platform"
     And the hierarchy includes domain "DOM-cloud-security"
 ```
 
@@ -496,7 +471,7 @@ Feature: Attach and resolve sources across the hierarchy
 
   Background:
     Given a domain with a problem exists on disk
-    And a source type "web_page" is defined in config/source_types.yaml
+    And a source type "web_page" is defined in .semops/config/source_types.yaml
 
   Scenario: Attach source at domain and inherit to problem
     Given the domain frontmatter attaches source "SRC-Example-1234"

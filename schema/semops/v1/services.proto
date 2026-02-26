@@ -6,6 +6,7 @@ import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 import "semops/v1/core.proto";
 import "semops/v1/entities.proto";
+import "semops/v1/knowledge.proto";
 
 // EntityService provides generic CRUD operations for all entity types.
 service EntityService {
@@ -35,6 +36,30 @@ service EntityService {
 
   // Gets entity relationships and hierarchy.
   rpc GetEntityRelationships(GetEntityRelationshipsRequest) returns (GetEntityRelationshipsResponse);
+}
+
+// KnowledgeService manages knowledge sources and retrieval.
+//
+// Sources are first-class objects (KnowledgeSource) and may be associated with
+// any entity type (including optional library entities) via EntityID.
+service KnowledgeService {
+  // Create or update a knowledge source and associate it with one or more entities.
+  rpc AddSource(AddSourceRequest) returns (AddSourceResponse);
+
+  // Trigger (re)processing for an existing source.
+  rpc ProcessSource(ProcessSourceRequest) returns (ProcessSourceResponse);
+
+  // List sources, optionally filtered to those associated with a specific entity.
+  rpc ListSources(ListSourcesRequest) returns (ListSourcesResponse);
+
+  // Retrieve processing status and details for a source.
+  rpc GetSourceStatus(GetSourceStatusRequest) returns (GetSourceStatusResponse);
+
+  // Search knowledge using a configured storage strategy (vector/graph/hybrid).
+  rpc Search(SearchRequest) returns (SearchResponse);
+
+  // Retrieve RAG context using a configured RAG workflow, optionally scoped to an entity.
+  rpc Retrieve(RetrievalRequest) returns (RetrievalResponse);
 }
 
 // Request to list entities.

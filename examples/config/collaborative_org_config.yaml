@@ -48,12 +48,9 @@ entity_types:
         extract_principles: "prompts/constitution-extract-principles.txt"
         validate_consistency: "prompts/constitution-validate-consistency.txt"
 
-    directory_name: "constitution"
+    directory_name: "constitutions"
     filename_pattern: "{entity_type}.md"
     nesting_strategy: "root"
-
-    parent_entity: null
-    child_entities: []
 
     required_fields: ["constitution_name", "version", "ratification_date"]
     unique_fields: ["constitution_slug"]
@@ -84,9 +81,6 @@ entity_types:
     directory_name: "policies"
     filename_pattern: "{entity_type}.md"
     nesting_strategy: "root"
-
-    parent_entity: null
-    child_entities: []
 
     required_fields: ["policy_name", "effective_date", "status", "authority_level"]
     unique_fields: ["policy_slug"]

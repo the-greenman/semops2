@@ -14,13 +14,13 @@ Enable a domain to declare a relationship (e.g., `depends_on`) to another domain
 
 ## Narrative
 1. Architect establishes a relationship: Domain B `depends_on` Domain A.
-2. Architect runs `semops relationships add --from B --to A --type depends_on`.
+2. Architect runs `semops relationship add depends_on B A`.
 3. CLI records the relationship and validates `share_sources` policy.
 4. Architect lists sources for Domain B with related included.
 5. CLI unions eligible sources from Domain A into Domain B’s effective list, marking provenance and respecting `max_depth`.
 
 ## Success Criteria
-- Relationship is stored and visible via `semops relationships list`.
+- Relationship is stored and visible via `semops relationship list`.
 - Listing sources for Domain B (with related) includes Domain A’s eligible sources with provenance.
 
 ## Mermaid (Sequence)
@@ -31,10 +31,10 @@ sequenceDiagram
     participant CFG as Config (entity_types)
     participant KS as KnowledgeService
 
-    U->>CLI: relationships add --from B --to A --type depends_on
+    U->>CLI: relationship add depends_on B A
     CLI->>CFG: Validate relationship type & share_sources
     CFG-->>CLI: Valid
-    CLI->>KS: Persist relationship (B depends_on A)
+    CLI->>KS: Persist relationship (B depends_on A) as semops.core/depends_on
     KS-->>CLI: OK
 
     U->>CLI: sources list --entity B --include-related

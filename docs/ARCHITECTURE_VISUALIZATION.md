@@ -215,7 +215,7 @@ sequenceDiagram
     Note over EntityServer: Universal Enforcement
     EntityServer->>EntityValidation: validate_protobuf_request()
     EntityValidation->>EntityValidation: Check field constraints (buf.validate)
-    EntityValidation->>EntityValidation: Validate entity hierarchy
+    EntityValidation->>EntityValidation: Validate entity relationships
     EntityValidation->>EntityValidation: Check business rules
     EntityValidation-->>EntityServer: Validation result
 
@@ -225,7 +225,7 @@ sequenceDiagram
         ConfigManager-->>EntityService: Return problem config
         EntityService->>TemplateEngine: render("problem.md.j2", ...)
         TemplateEngine-->>EntityService: Return rendered markdown
-        EntityService->>FileSystem: Write domain/{domain_slug}/problems/new-problem/problem.md
+        EntityService->>FileSystem: Write problems/new-problem/problem.md
         FileSystem-->>EntityService: Success
         EntityService-->>EntityServer: Return entity metadata
         EntityServer-->>API: Return CreateProblemResponse (gRPC)

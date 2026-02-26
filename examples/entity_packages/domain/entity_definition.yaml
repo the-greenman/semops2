@@ -28,10 +28,6 @@ entity_type:
   filename_pattern: "{entity_type}.md"
   nesting_strategy: "root"
 
-  # Entity relationships
-  parent_entity: null
-  child_entities: []
-
   # Field requirements
   required_fields:
     - "domain_name"

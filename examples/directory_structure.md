@@ -1,6 +1,8 @@
 # SemOps2 Directory Structure Examples
 
-Ops entity types use **flat root collections** — each type has its own top-level directory, not a nested hierarchy. Relationships between instances are stored as `EntityRelationship` records and referenced via YAML frontmatter, not by directory nesting.
+Ops entity types use **flat root collections** — each type has its own top-level directory, not a nested hierarchy.
+
+Relationships are **canonical first-class records** stored as `EntityRelationship` messages and managed through the `EntityService` interface (CLI/API/MCP). Entity documents may mirror relationship links in YAML frontmatter for human readability, but the authoritative mutation boundary is the interface so validation, ID resolution, and projections remain consistent.
 
 ## Standard Ops Workspace
 
@@ -19,6 +21,12 @@ my-ops-workspace/
 │   │   └── domain.md
 │   └── security-operations/
 │       └── domain.md
+│
+├── libraries/                           # Root collection: libraries (reference source lists)
+│   ├── cloud-security-standards/
+│   │   └── library.md
+│   └── vendor-reference/
+│       └── library.md
 │
 ├── roles/                               # Root collection: roles (cross-cutting)
 │   ├── ciso/
@@ -56,7 +64,7 @@ my-ops-workspace/
 
 ## Entity Frontmatter and Relationship Links
 
-Relationships between entities are declared in the entity's YAML frontmatter. The full relationship records are stored as `EntityRelationship` messages and indexed separately for querying.
+Relationships between entities may be mirrored in the entity's YAML frontmatter. The canonical relationship records are stored as `EntityRelationship` messages and indexed separately for querying.
 
 ### decision.md example
 
@@ -84,6 +92,31 @@ relationships:
 ---
 
 ## Decision
+
+...
+```
+
+### library.md example
+
+```yaml
+---
+entity_type: "semops.core/library"
+entity_id: "LIB-cloud-security-standards"
+namespace: "semops.core"
+library_name: "Cloud Security Standards"
+
+relationships:
+  - type: "semops.core/library_for"
+    to: "DOM-cloud-governance"
+
+sources:
+  attach:
+    - src_id: SRC-NCSC-CloudSecurityPrinciples-5fdbec50
+      type: web_page
+      title: "NCSC Cloud Security Principles"
+---
+
+## Library
 
 ...
 ```

@@ -9,7 +9,7 @@ Attach broad, foundational sources to a domain so that descendants inherit conte
 
 ## Preconditions
 - Domain exists (see Narrative 01)
-- `config/source_types.yaml` defines `web_page` (or relevant types)
+- `.semops/config/source_types.yaml` defines `web_page` (or relevant types)
 
 ## Narrative
 1. Strategist identifies a key reference (e.g., NCSC Cloud Security Principles).

@@ -132,7 +132,7 @@ rag_workflows:
         method: "entity_grouped"
         parameters:
           max_tokens: 10000
-          entity_hierarchy: true
+          entity_relationships: true
 
   # =====================================
   # Multi-Modal RAG

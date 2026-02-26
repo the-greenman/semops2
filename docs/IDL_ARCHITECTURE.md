@@ -155,7 +155,7 @@ message Actor {
   // Human-readable name
   string display_name = 3 [(buf.validate.field).string.min_len = 1];
 
-  // Role links (ROL-*) used by policy and approval logic
+  // Role links (ROLE-*) used by policy and approval logic
   repeated string role_bindings = 4;
 
   // Declared capabilities, evaluated by policy engine at runtime

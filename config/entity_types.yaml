@@ -10,6 +10,17 @@ entity_types:
     description: "Strategic business areas and market segments"
     icon: "🏢"
 
+  library:
+    id_prefix: "LIB"
+    name_field: "library_name"
+    slug_field: "library_slug"
+    template: "library.md.j2"
+    directory_name: "libraries"
+    filename_pattern: "{entity_type}.md"
+    display_name: "Library"
+    description: "Curated reference libraries of sources used for retrieval and analysis"
+    icon: "📚"
+
   project:
     id_prefix: "PROJ"
     name_field: "project_name"

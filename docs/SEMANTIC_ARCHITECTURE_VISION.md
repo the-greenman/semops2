@@ -133,7 +133,7 @@ async def semops_discover_operational_context(actor_id: str):
         },
 
         "current_state": {
-            "active_journeys": ["decision_refinement: MTG-weekly-sync"],
+            "active_journeys": ["decision-refinement: MTG-weekly-sync"],
             "pending_reviews": ["DEC-003: needs human approval"],
             "recent_changes": [
                 "POL-access-control: updated 2 days ago",
@@ -210,9 +210,9 @@ async def semops_understand_entity_intent(entity_id: str):
                 "Reference in decisions that have security implications"
             ],
             "actors_with_access": [
-                "ROL-security-lead (accountable)",
-                "ROL-compliance-officer (accountable)",
-                "ROL-engineering-leads (consulted)"
+                "ROLE-security-lead (accountable)",
+                "ROLE-compliance-officer (accountable)",
+                "ROLE-engineering-leads (consulted)"
             ]
         },
 
@@ -267,7 +267,7 @@ async def semops_query_operational_boundaries(
 
         "required_approvals": [
             {
-                "approver_role": "ROL-operations-lead",
+                "approver_role": "ROLE-operations-lead",
                 "approval_type": "review_and_approve",
                 "typical_response_time": "24 hours"
             }
@@ -276,9 +276,9 @@ async def semops_query_operational_boundaries(
         "recommended_approach": {
             "action": "create_draft_decision",
             "next_steps": [
-                "1. Use journey: decision_refinement to create draft",
+                "1. Use journey: decision-refinement to create draft",
                 "2. Journey will pause at human review stage",
-                "3. Notification sent to ROL-operations-lead",
+                "3. Notification sent to ROLE-operations-lead",
                 "4. Human reviews and approves/rejects/edits"
             ]
         },
@@ -585,7 +585,7 @@ Process expectations:
 Before non-human actors participate, SemOps2 begins with human founders as actors:
 
 1. Register founding humans as actors (`ACT-*`)
-2. Bind them to founding roles (`ROL-founder`, governance roles)
+2. Bind them to founding roles (`ROLE-founder`, governance roles)
 3. Create constitution and early policies with explicit actor provenance
 4. Enforce mutation attribution from day one
 
@@ -699,7 +699,7 @@ for decision in decisions:
 await mcp.call_tool("semops_request_human_review", {
     "entity_id": draft_id,
     "review_type": "decision_approval",
-    "assigned_to": "ROL-operations-lead",
+    "assigned_to": "ROLE-operations-lead",
     "reasoning": "MEDIUM authority decision requires human approval per POL-ai-collaboration"
 })
 
@@ -732,7 +732,7 @@ proposal_id = await mcp.call_tool("semops_create_entity", {
     "entity_type": "conversation",  # Not policy - this actor cannot create policy
     "conversation_name": "Proposal: Actor Decision Boundary Policy",
     "content": synthesis,
-    "tagged_roles": ["ROL-governance-lead"],
+    "tagged_roles": ["ROLE-governance-lead"],
     "created_by": "ACT-assistant-007"
 })
 
@@ -852,7 +852,7 @@ To make semantic operations reliable and auditable, the following metadata is re
 Required for all actors (human and software):
 - `actor_id` - Stable identifier (e.g., `ACT-assistant-007`)
 - `actor_type` - `human | software | service | posthuman` (extensible)
-- `role_bindings` - Linked governance roles (`ROL-*`)
+- `role_bindings` - Linked governance roles (`ROLE-*`)
 - `capabilities` - Declared action capabilities
 - `authority_level` - Current authority tier
 - `status` - `active | suspended | retired`
@@ -913,7 +913,7 @@ Actors are not just another pluggable content entity. They are governance princi
 Actors are modeled as:
 1. **Identity principal** - Stable actor identity and lifecycle (`ACT-*`)
 2. **Capability holder** - Declared and policy-scoped action capabilities
-3. **Governance participant** - Bound to one or more roles (`ROL-*`) that define accountability and approvals
+3. **Governance participant** - Bound to one or more roles (`ROLE-*`) that define accountability and approvals
 4. **Provenance source** - Every mutation and proposal traces back to an actor
 
 ### Relationship to Entities

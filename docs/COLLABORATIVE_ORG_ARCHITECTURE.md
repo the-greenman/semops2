@@ -736,8 +736,8 @@ semops actor register --actor-type human --name "Founder A" --actor-id ACT-found
 semops actor register --actor-type human --name "Founder B" --actor-id ACT-founder-b
 
 # 3. Bind founding governance roles
-semops relationship add holds_role ACT-founder-a ROL-founder
-semops relationship add holds_role ACT-founder-b ROL-founder
+semops relationship add holds_role ACT-founder-a ROLE-founder
+semops relationship add holds_role ACT-founder-b ROLE-founder
 
 # 4. Create bootstrap constitution through ratification journey
 semops journey start constitution-ratification --name "Founding Charter"
