@@ -10,6 +10,7 @@
 - Core decisions are now explicit and accepted:
   - File-first canonical datastore ([ADR-0001](./decisions/ADR-0001-file-first-canonical-datastore.md))
   - Canonical config layout and naming ([ADR-0002](./decisions/ADR-0002-configuration-layout-and-naming.md))
+  - Actor-expert invocation contract and resolution metadata ([ADR-0003](./decisions/ADR-0003-actor-expert-invocation-contract.md))
 - Collaborative-org implementation model and invariants are documented in [COLLABORATIVE_ORG_ARCHITECTURE.md](./COLLABORATIVE_ORG_ARCHITECTURE.md).
 
 ### Code implementation state
@@ -72,13 +73,13 @@ Each workstream below identifies what must be implemented to move from planning 
 ### E. Entity Package Runtime (Definitions + Journeys)
 - Goal: Make packaged entity definitions and journey YAML executable.
 - Code-level impact:
-  - Package loader for `entity_definition.yaml` + `journey_definition.yaml` + template bundle metadata.
+  - Package loader for `entity_definition.yaml` + `experts.yaml` + `journey_definition.yaml` + template bundle metadata.
   - Journey runtime (stage execution, loop/branch transitions, pause/resume checkpointing).
   - CLI commands to discover/start/resume/list journeys.
 - Primary references:
   - [COLLABORATIVE_ORG_ARCHITECTURE.md](./COLLABORATIVE_ORG_ARCHITECTURE.md) (Entity-Journey Framework)
   - [examples/entity_packages/README.md](/workspace/examples/entity_packages/README.md)
-  - [PLANNING_COMPLETE.md](/workspace/PLANNING_COMPLETE.md)
+  - [CONSOLIDATION_DECISIONS.md](./CONSOLIDATION_DECISIONS.md)
 
 ### F. Template Lifecycle and Migration Engine
 - Goal: Implement template version governance as a first-class runtime subsystem.
@@ -117,6 +118,7 @@ Each workstream below identifies what must be implemented to move from planning 
 - Goal: Make architecture invariants observable and enforceable in CI/runtime.
 - Code-level impact:
   - Audit logs for all mutations (actor, operation, target, diff/sync status).
+  - Audit coverage for expert invocations (`actor_id`, `expert_type`, workflow, trace metadata).
   - Actor attribution enforcement (`created_by_actor_id` / `updated_by_actor_id` semantics).
   - Replace skipped tests with working contract + integration coverage.
 - Primary references:
@@ -133,14 +135,17 @@ Each workstream below identifies what must be implemented to move from planning 
   - `ApiGatewayAdapter` (FastAPI over gRPC clients).
   - `MCPToolAdapter` (official MCP Python SDK).
   - `VectorStoreAdapter` abstraction with Chroma/Qdrant implementations.
+  - `ExpertInvocationAdapter` to enforce `actor_id + expert_type` contract and package-first role resolution.
 - Primary references:
   - Existing internal architecture docs already cited in section 2.
   - [External Library Baseline](#5-external-library-baseline-locked-on-2026-02-26).
+  - [ADR-0003](./decisions/ADR-0003-actor-expert-invocation-contract.md).
 - Required deliverables:
   1. Adapter contracts and error taxonomy.
   2. Dependency pinning policy and compatibility matrix.
   3. CI checks for structured-output compliance and prompt regressions.
   4. Backend parity tests (Chroma vs Qdrant).
+  5. Actor/expert invocation conformance tests (role alias resolution + provenance).
 
 ## 3. Phase Sequence (High-Level)
 
@@ -152,7 +157,7 @@ Each workstream below identifies what must be implemented to move from planning 
    - Exit criteria: file-first CRUD operational with projection sync/reconciliation hooks.
 3. **Phase 2: Journey + templates runtime**
    - Workstreams E-F plus structured-output enforcement and prompt stack integration
-   - Exit criteria: at least one end-to-end journey and one template migration path executable, with typed LLM outputs and prompt tracing in place.
+   - Exit criteria: at least one end-to-end journey and one template migration path executable, with typed LLM outputs, actor-aware expert invocation, and prompt tracing in place.
 4. **Phase 3: Knowledge + read interfaces**
    - Workstreams G-H plus Haystack execution and vector-backend abstraction parity
    - Exit criteria: authority-weighted retrieval integrated into journey AI stages, browse read model available, and Chroma/Qdrant parity validated.
@@ -179,6 +184,7 @@ Use this document as the implementation index; use the referenced docs as the de
 - **API/MCP surface:** protobuf/gRPC core plus FastAPI adapter and official MCP Python SDK.
 - **Vector backend strategy:** Chroma for local development, Qdrant for production (config-selected).
 - **Design rule:** All libraries stay behind SemOps adapters; framework primitives do not leak into domain services.
+- **Actor/expert contract:** all expert execution paths require `actor_id`; journey `agent.role` aliases resolve to concrete `expert_type` keys package-first.
 
 ### Why This Baseline
 - Preserves protobuf-first contracts and Entity Server mutation invariants while avoiding greenfield reimplementation.
@@ -207,11 +213,15 @@ Use this document as the implementation index; use the referenced docs as the de
 2. `PromptRegistry.resolve/render/record_usage(...)`
 3. `RAGPipelineExecutor.run(workflow_id, query, context_entity_id, backend_hint)`
 4. `VectorStoreAdapter` with standard operations for ingest/search/filter.
-5. Response metadata additions for observability and testability:
+5. `ExpertAnalysisRequest` and MCP expert tools require `actor_id` and selector contract (`expert_type` or `requested_role`) with resolved expert metadata.
+6. Response metadata additions for observability and testability:
    - `schema_validated`
    - `prompt_version`
    - `trace_id`
    - `backend_used`
+   - `requested_role`
+   - `resolved_expert_type`
+   - `resolution_source`
 
 ### Test Cases and Scenarios
 1. Structured-output conformance tests:
@@ -227,6 +237,9 @@ Use this document as the implementation index; use the referenced docs as the de
    - gRPC, FastAPI, and MCP return equivalent semantics for the same operations.
 5. Non-bypass invariant tests:
    - MCP/API calls cannot bypass Entity Server mutation boundary.
+6. Actor/expert contract tests:
+   - journey `agent.role` resolves to package-local expert before core fallback;
+   - expert analysis requests without `actor_id` are rejected.
 
 ### Assumptions and Defaults
 1. Protobuf/gRPC remains the canonical contract architecture.

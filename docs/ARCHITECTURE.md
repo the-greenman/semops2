@@ -4,7 +4,9 @@
 
 SemOps2 reimagines the semantic operations platform with a generic, configuration-driven architecture that eliminates the need for entity-specific service classes. Instead of hardcoded domains, problems, personas, and products, the system uses a flexible entity type configuration system that can handle unlimited entity types through templates and configuration.
 
-## Current Problems with SemOps v1
+Scope note: this document defines the SemOps2 target architecture. Any SemOps v1 references below are historical context only and are not part of SemOps2 runtime scope.
+
+## Legacy Constraints (SemOps v1 Historical Context)
 
 1. **Entity-Specific Services** - Separate `DomainService`, `ProblemService`, `PersonaService` classes that duplicate logic
 2. **Hardcoded Entity Types** - New entity types require new service classes, CLI commands, and templates
@@ -127,16 +129,21 @@ To avoid ambiguity between lifecycle orchestration and retrieval logic, SemOps2 
    - Defined per entity package in `entity_packages/<entity>/journey_definition.yaml`
    - Own creation/refinement/evolution stage flow, human checkpoints, and commit transitions
 
-2. **Analysis workflows (reusable orchestration library):**
+2. **Expert profiles (package-local by default):**
+   - Defined per entity package in `entity_packages/<entity>/experts.yaml`
+   - AI journey stages resolve `agent.role` from package experts first
+   - Optional shared baseline may exist in `.semops/config/expert_types.yaml`
+
+3. **Analysis workflows (reusable orchestration library):**
    - Defined globally in `.semops/config/workflows.yaml`
    - Reusable multi-step expert pipelines that can be invoked directly by CLI/API/MCP commands or from journey stages
    - Scoped with `applicable_entity_types`
 
-3. **RAG workflows (retrieval only):**
+4. **RAG workflows (retrieval only):**
    - Defined in `.semops/config/rag_workflows.yaml`
    - Control retrieval/ranking/context assembly only (no lifecycle state transitions)
 
-When both a journey and a reusable analysis workflow exist for an entity, the journey remains the lifecycle authority and may call analysis workflows as subordinate steps. Global workflows remain first-class and executable without a journey when lifecycle orchestration is not required.
+When both a journey and a reusable analysis workflow exist for an entity, the journey remains the lifecycle authority and may call analysis workflows as subordinate steps. Expert resolution remains package-first to preserve pluggable behavior in contributed entity packs.
 
 ### Configuration Examples
 
@@ -184,7 +191,7 @@ To provide observability, traceability, and security, SemOps2 implements a three
 
 2.  **Audit Logging**: A critical, immutable record of all state-changing operations (`create`, `update`, `delete`). Each audit log entry is structured to capture:
     *   `timestamp`
-    *   `actor_id` (e.g., `user:john.doe` or `agent:triage-ai`)
+    *   `actor_id` (e.g., `ACT-human-jane-doe` or `ACT-assistant-triage-ai`)
     *   `action` (e.g., `entity.create`)
     *   `target_entity_id`
     *   A diff or summary of the changes made.
@@ -650,10 +657,10 @@ class EntityService(services_pb2_grpc.EntityServiceServicer):
 
 To orchestrate complex methodologies that require multiple specialized AI agents, the system uses a `WorkflowEngine`.
 
-1.  **Specialized Experts**: First, individual experts are defined in `.semops/config/expert_types.yaml`, each with a unique persona and skill.
+1.  **Specialized Experts**: First, experts are defined per entity package in `entity_packages/<entity>/experts.yaml`. Shared core experts in `.semops/config/expert_types.yaml` are optional fallbacks.
 
     ```yaml
-    # in .semops/config/expert_types.yaml
+    # in entity_packages/domain/experts.yaml
     expert_types:
       boundary_definer:
         persona: "You are a business strategist specializing in market segmentation..."
@@ -702,16 +709,16 @@ To orchestrate complex methodologies that require multiple specialized AI agents
 
 This architecture transforms implicit methodologies into explicit, version-controllable assets that can be executed consistently by both humans and AI agents.
     def __init__(self, config_manager: ConfigManager):
-        self.experts = config_manager.get_expert_types()
-        self.mappings = config_manager.get_entity_expert_mappings()
+        self.package_experts = config_manager.get_package_expert_types()
+        self.core_experts = config_manager.get_core_expert_types()
         self.prompt_generator = ExpertPromptGenerator()
         self.workflow_engine = WorkflowEngine()
 
     def get_expert_analysis(self, entity_type: str, entity_data: Dict,
                           expert_type: Optional[str] = None) -> Dict:
         """Generate expert analysis using specialized AI agents."""
-        # Get appropriate expert for entity type
-        expert = expert_type or self.mappings.get_primary_expert(entity_type)
+        # Resolve role/expert using package-first precedence
+        expert = self.resolve_expert(entity_type, expert_type)
 
         # Generate expert-specific prompt
         prompt = self.prompt_generator.generate_expert_prompt(expert, entity_type, entity_data)

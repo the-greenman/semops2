@@ -1,6 +1,6 @@
 # Entity Packages
 
-Entity packages are modular, self-contained units that define entity types and their interactive refinement journeys.
+Entity packages are modular, self-contained units that define entity types, their expert profiles, and interactive refinement journeys.
 
 ## Package Structure
 
@@ -9,6 +9,7 @@ Each package contains:
 ```
 entity_package_name/
 ├── entity_definition.yaml      # Entity type configuration
+├── experts.yaml                # Package-local expert profiles (default resolution source)
 ├── journey_definition.yaml     # Interactive refinement journey
 ├── migration_rules.yaml        # Template evolution rules
 └── templates/
@@ -326,7 +327,19 @@ entity_journey:
       type: "system.commit"
 ```
 
-### 4. Create Templates
+### 4. Define Package Experts
+
+```yaml
+# experts.yaml
+expert_types:
+  my_entity_specialist:
+    name: "My Entity Specialist"
+    persona:
+      role: "Specialist for my_entity refinement"
+    expertise: ["context_mapping", "stakeholder_alignment"]
+```
+
+### 5. Create Templates
 
 ```jinja2
 # templates/v1.0.0/create.md.j2
@@ -343,7 +356,7 @@ entity_journey:
 - **Template Version**: {{template_version}}
 ```
 
-### 5. Define Migration Rules
+### 6. Define Migration Rules
 
 ```yaml
 # migration_rules.yaml
@@ -357,7 +370,7 @@ rollback:
   retention_policy: "90_days"
 ```
 
-### 6. Reference in Config
+### 7. Reference in Config
 
 ```yaml
 # .semops/config.yaml
@@ -425,8 +438,9 @@ Follow semantic versioning:
 # Check package loaded
 semops config show entity_packages
 
-# Verify journey_definition.yaml exists
+# Verify journey_definition.yaml and experts.yaml exist
 ls .semops/entity_packages/domain/journey_definition.yaml
+ls .semops/entity_packages/domain/experts.yaml
 ```
 
 ### "Template not found"

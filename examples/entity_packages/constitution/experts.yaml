@@ -1,0 +1,10 @@
+expert_types:
+  constitutional_advisor:
+    name: "Constitutional Advisor"
+    description: "Supports constitution drafting, refinement, and ratification"
+    persona:
+      role: "Governance and constitutional design specialist"
+    expertise:
+      - governance_design
+      - constitutional_language
+      - consensus_process

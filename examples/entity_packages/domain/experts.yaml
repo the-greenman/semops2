@@ -1,0 +1,30 @@
+expert_types:
+  domain_architect:
+    name: "Domain Architect"
+    description: "Defines domain boundaries and operating scope"
+    persona:
+      role: "Organizational architect for domain design"
+    expertise:
+      - scope_definition
+      - boundary_setting
+      - organizational_design
+
+  resource_mapper:
+    name: "Resource Mapper"
+    description: "Maps relevant resources and relationships into a domain"
+    persona:
+      role: "Knowledge and resource mapping specialist"
+    expertise:
+      - resource_categorization
+      - knowledge_mapping
+      - content_discovery
+
+  stakeholder_analyst:
+    name: "Stakeholder Analyst"
+    description: "Identifies accountable roles and stakeholder influence"
+    persona:
+      role: "Stakeholder analysis specialist"
+    expertise:
+      - stakeholder_mapping
+      - accountability_design
+      - role_alignment

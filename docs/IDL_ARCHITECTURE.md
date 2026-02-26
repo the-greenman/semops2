@@ -4,9 +4,11 @@
 
 SemOps2 uses a protobuf-first approach to eliminate interface drift and ensure perfect consistency across all access methods (CLI, REST API, GraphQL, MCP). All interfaces, data structures, and validation rules are generated from authoritative protobuf schemas, creating a single source of truth for the entire system.
 
-## Problem: Interface Drift in SemOps v1
+Scope note: this document defines the SemOps2 IDL target architecture. SemOps v1 references are historical rationale only and are not in-scope runtime behavior.
 
-### Current Issues
+## Legacy Problem Context: Interface Drift in SemOps v1
+
+### Historical Issues
 ```python
 # Different ID formats across interfaces
 cli_id = "DOM-vmware-modernisation"     # CLI inconsistent kebab-case
@@ -307,7 +309,8 @@ message EntityDocument {
 
 ### Expert System Schema
 
-Expert types are **configuration-driven**, not a closed protobuf enum. The `expert_type` field carries a string key that maps to an entry in `experts.yaml`. This follows the same extensibility principle as `entity_type`: new expert personas are added via config, not schema changes.
+Expert types are **configuration-driven**, not a closed protobuf enum. The `expert_type` field carries a string key that maps to an entry in `experts.yaml`. This follows the same extensibility principle as `entity_type`: new expert personas are added via config, not schema changes. Journey `agent.role` values are runtime aliases that must resolve to `expert_type` keys before expert calls are executed.
+Normative contract decision: [ADR-0003](./decisions/ADR-0003-actor-expert-invocation-contract.md).
 
 ```protobuf
 // schema/semops/v1/experts.proto (planned)
@@ -320,14 +323,27 @@ import "google/protobuf/timestamp.proto";
 import "semops/v1/core.proto";
 
 // Expert analysis request.
-// expert_type is a config-defined string key, e.g. "operations-analyst" or "governance-reviewer".
 // workflow is a config-defined string key, e.g. "basic_analysis" or "decision-rationale-review".
+// Selector contract:
+// - pass expert_type for explicit expert key execution, OR
+// - pass requested_role for alias-based package-first resolution.
 message ExpertAnalysisRequest {
   EntityID entity_id = 1;
-  string expert_type = 2 [(buf.validate.field).string.min_len = 1];
+  string expert_type = 2;
   string workflow = 3;
   google.protobuf.Struct parameters = 4;
   bool auto_save = 5;
+  string actor_id = 6 [(buf.validate.field).string.pattern = "^ACT-[a-z0-9-]+$"];
+  string requested_role = 7;
+}
+
+// Resolution metadata captured for auditability.
+message ExpertResolutionMetadata {
+  string requested_role = 1;       // Empty when expert_type provided directly
+  string resolved_expert_type = 2; // Final config key used by runtime
+  string resolution_source = 3;    // package | core | builtin
+  string resolver_version = 4;     // Resolver implementation/config version
+  repeated string resolution_path = 5; // Catalogs inspected in order
 }
 
 // Expert analysis response
@@ -341,6 +357,11 @@ message ExpertAnalysisResponse {
   string workflow_used = 7;
   google.protobuf.Timestamp generated_at = 8;
   AnalysisStatus status = 9;
+  ExpertResolutionMetadata resolution = 10;
+  bool schema_validated = 11;
+  string prompt_version = 12;
+  string trace_id = 13;
+  string backend_used = 14;
 }
 
 enum AnalysisStatus {
@@ -350,6 +371,12 @@ enum AnalysisStatus {
   ANALYSIS_STATUS_FAILED = 3;
 }
 ```
+
+Validation semantics (service-enforced):
+
+- `actor_id` is required.
+- At least one selector must be provided: `expert_type` or `requested_role`.
+- If both are provided, service either rejects the request or requires explicit policy allowing override mode.
 
 ### Knowledge Repository Schema
 
@@ -925,22 +952,35 @@ SEMOPS_TOOLS = [
         }
     ),
     Tool(
-        name="semops_analyze_entity",
+        name="semops_expert_analyze",
         description="Run an expert prompt against an entity",
         inputSchema={
             "type": "object",
             "properties": {
+                "actor_id": {"type": "string"},
                 "entity_id": {"type": "string"},
                 "expert_type": {
                     "type": "string",
                     "description": "Config-defined expert key, e.g. 'operations-analyst'"
                 },
+                "requested_role": {
+                    "type": "string",
+                    "description": "Journey/agent role alias resolved at runtime"
+                },
                 "workflow": {
                     "type": "string",
                     "description": "Config-defined workflow key"
-                }
+                },
+                "parameters": {
+                    "type": "object",
+                    "description": "Optional workflow/expert parameters"
+                },
             },
-            "required": ["entity_id"]
+            "required": ["actor_id", "entity_id"],
+            "oneOf": [
+                {"required": ["expert_type"]},
+                {"required": ["requested_role"]}
+            ]
         }
     ),
     Tool(
@@ -1039,16 +1079,20 @@ class SemOpsHandler:
 """
         )]
 
-    async def handle_semops_analyze_entity(self, arguments: Dict[str, Any]) -> List[TextContent]:
-        """Handle analyze_entity MCP tool call."""
+    async def handle_semops_expert_analyze(self, arguments: Dict[str, Any]) -> List[TextContent]:
+        """Handle expert_analyze MCP tool call."""
         entity_id = entities_pb2.EntityID(id=arguments["entity_id"])
-        expert_type = arguments.get("expert_type", "strategic_analyst")
+        expert_type = arguments.get("expert_type", "")
+        requested_role = arguments.get("requested_role", "")
         workflow = arguments.get("workflow", "basic_analysis")
 
         request = experts_pb2.ExpertAnalysisRequest(
             entity_id=entity_id,
             expert_type=expert_type,
             workflow=workflow,
+            parameters=arguments.get("parameters", {}),
+            actor_id=arguments["actor_id"],
+            requested_role=requested_role,
             auto_save=True
         )
 
@@ -1056,13 +1100,17 @@ class SemOpsHandler:
 
         return [TextContent(
             type="text",
-            text=f"""# Expert Analysis: {expert_type.replace('_', ' ').title()}
+            text=f"""# Expert Analysis: {response.resolution.resolved_expert_type.replace('_', ' ').title()}
 
 **Analysis ID**: {response.analysis_id}
 **Entity**: {arguments['entity_id']}
+**Requested Role**: {response.resolution.requested_role}
+**Resolved Expert**: {response.resolution.resolved_expert_type}
+**Resolution Source**: {response.resolution.resolution_source}
 **Confidence**: {response.confidence_score:.2f}
 **Workflow**: {response.workflow_used}
 **Generated**: {response.generated_at.ToJsonString()}
+**Trace ID**: {response.trace_id}
 
 ## Analysis Content
 
@@ -1246,4 +1294,4 @@ buf breaking --against '.git#branch=main'
 - Validation rules defined once, used everywhere
 - Schema evolution handled automatically
 
-This protobuf-first approach completely eliminates the interface drift problem that plagued SemOps v1, ensuring perfect consistency across all access methods while providing strong type safety and automatic code generation.
+This protobuf-first approach eliminates the interface drift observed in the SemOps v1 historical architecture, ensuring consistency across access methods with strong type safety and automatic code generation.

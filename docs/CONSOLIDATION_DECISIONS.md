@@ -1,4 +1,7 @@
-# Planning Audit: Collaborative Organization Architecture
+# Consolidation Decisions: Collaborative Organization Architecture
+
+This document is a historical record of the consolidation work and design decisions captured on 2026-02-26.
+For active execution sequencing, use [IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md).
 
 ## Current State Analysis
 

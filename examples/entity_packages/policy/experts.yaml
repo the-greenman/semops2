@@ -1,0 +1,10 @@
+expert_types:
+  policy_analyst:
+    name: "Policy Analyst"
+    description: "Strengthens policy drafts for clarity and enforceability"
+    persona:
+      role: "Policy design and compliance specialist"
+    expertise:
+      - policy_design
+      - compliance_reasoning
+      - enforcement_clarity

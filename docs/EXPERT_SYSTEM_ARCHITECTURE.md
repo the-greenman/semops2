@@ -2,13 +2,15 @@
 
 ## Overview
 
-SemOps2's expert system provides a generic, configuration-driven approach to multi-agent analysis where different AI expert personas specialize in different types of semantic analysis. Instead of hardcoded expert mappings, the system uses configurable expert definitions that can be extended and customized without code changes.
+SemOps2's expert system provides a generic, configuration-driven approach to multi-agent analysis where different AI expert personas specialize in different types of semantic analysis. Experts are package-local by default so pluggable entity contributions carry entity definitions, journeys, and expert behavior together.
 
-## Current Expert System Problems
+Scope note: this document defines the SemOps2 target architecture. Any SemOps v1 references below are historical rationale only and are not part of the SemOps2 runtime scope.
+
+## Legacy Constraints (SemOps v1 Historical Context)
 
 ### Hardcoded Expert Mapping
 ```python
-# Current rigid mapping in prompt_assembler.py
+# Historical SemOps v1 mapping example
 expert_mapping = {
     "domain": "strategic",
     "problem": "product",
@@ -31,10 +33,35 @@ expert_mapping = {
 
 ## SemOps2 Generic Expert System
 
+### Expert Ownership Model
+
+1. **Package-local experts are the default**
+   - Each entity package may define `experts.yaml` alongside `entity_definition.yaml` and `journey_definition.yaml`.
+   - Journey `ai.assist` stages resolve `agent.role` from package-local experts first.
+
+2. **Core experts are a small shared baseline**
+   - `.semops/config/expert_types.yaml` provides optional cross-package shared experts.
+   - Core experts are fallback defaults, not the primary extension surface.
+
+3. **Deterministic resolution order**
+   - `entity_packages/<entity>/experts.yaml`
+   - `.semops/config/expert_types.yaml`
+   - Built-in SemOps core defaults
+
+### Experts vs External Actors (Unified Runtime Contract)
+
+- **Actors are control-plane principals**: humans/software/services use `ACT-*` identities, policy-scoped permissions, and audit attribution.
+- **Experts are analysis personas**: `expert_type` keys resolve to package-local or core expert definitions and do not carry authority on their own.
+- **Invocation contract is explicit**: external actors call expert analysis with `actor_id + expert_type + entity_id/workflow`.
+- **Journey role aliases are resolved first**: `agent.role` in journey stages is translated to a concrete `expert_type` using package-first precedence before execution.
+- **Mutation invariants still apply**: expert outputs can propose content, but any write must go through `EntityService` with `created_by_actor_id` / `updated_by_actor_id`.
+
 ### Expert Configuration Schema
 
+Example expert and entity names below are illustrative configuration patterns. SemOps2 runtime defaults remain defined by the active `entity_types` configuration (for example, `semops.core/domain`, `semops.core/meeting`, `semops.core/decision`).
+
 ```yaml
-# config/expert_types.yaml
+# entity_packages/domain/experts.yaml
 expert_types:
   # Strategic Business Expert
   strategic_analyst:
@@ -188,66 +215,32 @@ expert_types:
     primary_entity: "research"
 ```
 
-### Entity-Expert Assignment Configuration
+### Package-Level Expert Assignment Pattern
 
 ```yaml
-# config/entity_expert_mapping.yaml
-entity_expert_assignments:
-  domain:
-    primary_expert: "strategic_analyst"
-    secondary_experts: ["market_researcher"]
-    context_experts: []  # Additional experts based on domain context
+# entity_packages/domain/journey_definition.yaml
+entity_journey:
+  journey_id: "domain-definition"
+  entity_type: "semops.core/domain"
+  stages:
+    - name: "scope_clarification"
+      type: "ai.assist"
+      agent:
+        role: "domain_architect"  # Resolved from entity_packages/domain/experts.yaml
+    - name: "stakeholder_mapping"
+      type: "ai.assist"
+      agent:
+        role: "stakeholder_analyst"
 
-  problem:
-    primary_expert: "product_strategist"
-    secondary_experts: ["ux_researcher"]
-    validation_experts: ["market_researcher"]
-
-  persona:
-    primary_expert: "ux_researcher"
-    secondary_experts: ["product_strategist"]
-    behavioral_experts: ["market_researcher"]
-
-  solution:
-    primary_expert: "technical_architect"
-    secondary_experts: ["product_strategist"]
-    feasibility_experts: ["strategic_analyst"]
-
-  # New entity types automatically get expert assignments
-  market_segment:
-    primary_expert: "market_researcher"
-    secondary_experts: ["strategic_analyst", "ux_researcher"]
-
-  research:
-    primary_expert: "market_researcher"
-    secondary_experts: ["strategic_analyst"]
-
-  integration:
-    primary_expert: "technical_architect"
-    secondary_experts: ["product_strategist"]
-
-# Multi-Expert Analysis Workflows
-multi_expert_workflows:
-  domain_analysis:
-    phases:
-      - phase: "strategic_assessment"
-        expert: "strategic_analyst"
-        deliverable: "strategic_context_analysis"
-      - phase: "market_validation"
+# Optional shared workflow library in .semops/config/workflows.yaml
+workflows:
+  domain-analysis:
+    applicable_entity_types: ["semops.core/domain"]
+    steps:
+      - name: "strategic_assessment"
+        expert: "domain_architect"
+      - name: "market_validation"
         expert: "market_researcher"
-        deliverable: "market_opportunity_assessment"
-      - phase: "synthesis"
-        experts: ["strategic_analyst", "market_researcher"]
-        deliverable: "comprehensive_domain_analysis"
-
-  solution_design:
-    phases:
-      - phase: "technical_feasibility"
-        expert: "technical_architect"
-      - phase: "market_validation"
-        expert: "product_strategist"
-      - phase: "user_acceptance"
-        expert: "ux_researcher"
 ```
 
 ## Generic Expert System Components
@@ -259,14 +252,14 @@ class ExpertService:
     """Generic expert system for multi-agent analysis."""
 
     def __init__(self, config_manager: ConfigManager):
-        self.experts = config_manager.get_expert_types()
-        self.mappings = config_manager.get_entity_expert_mappings()
+        self.package_experts = config_manager.get_package_expert_types()
+        self.core_experts = config_manager.get_core_expert_types()
         self.template_engine = TemplateEngine()
 
-    def get_primary_expert(self, entity_type: str) -> Optional[ExpertType]:
-        """Get primary expert for entity type."""
+    def resolve_expert(self, entity_type: str, role: str) -> Optional[ExpertType]:
+        """Resolve expert using package-first, core-second precedence."""
 
-    def get_expert_analysis(self, entity_type: str, entity_data: Dict,
+    def get_expert_analysis(self, actor_id: str, entity_type: str, entity_data: Dict,
                           expert_type: Optional[str] = None) -> Dict:
         """Generate expert analysis for entity."""
 
@@ -306,11 +299,12 @@ class ExpertPromptGenerator:
 
 ```python
 class MultiExpertWorkflow:
-    def execute_domain_analysis(self, domain_data: Dict) -> Dict:
+    def execute_domain_analysis(self, actor_id: str, domain_data: Dict) -> Dict:
         """Multi-phase domain analysis with expert specialization."""
 
         # Phase 1: Strategic Assessment
         strategic_analysis = self.expert_service.get_expert_analysis(
+            actor_id=actor_id,
             entity_type="domain",
             entity_data=domain_data,
             expert_type="strategic_analyst"
@@ -318,6 +312,7 @@ class MultiExpertWorkflow:
 
         # Phase 2: Market Research
         market_analysis = self.expert_service.get_expert_analysis(
+            actor_id=actor_id,
             entity_type="domain",
             entity_data={**domain_data, "strategic_context": strategic_analysis},
             expert_type="market_researcher"
@@ -390,11 +385,11 @@ You are a {{expert_role}} specializing in {{specialization}}. Your expertise inc
 [Context-specific responsibilities based on entity type and expert specialization]
 ```
 
-## Migration Strategy for Expert System
+## Implementation Strategy for Expert System
 
 ### Phase 1: Expert Configuration
 - Define expert types in YAML configuration
-- Create entity-expert mapping configurations
+- Define package-local expert catalogs and optional shared core fallback experts
 - Build expert template framework
 
 ### Phase 2: Expert Service Implementation
@@ -402,8 +397,8 @@ You are a {{expert_role}} specializing in {{specialization}}. Your expertise inc
 - Dynamic expert prompt generation
 - Multi-expert workflow execution
 
-### Phase 3: Template Migration
-- Convert hardcoded expert headers to templates
+### Phase 3: Template Standardization
+- Standardize expert headers as templates
 - Create expert-specific analysis methodologies
 - Build expert persona generation system
 

@@ -6,7 +6,7 @@ This directory contains the complete architecture and implementation plan for us
 
 **New to this architecture?** Start with these in order:
 
-1. **[PLANNING_COMPLETE.md](PLANNING_COMPLETE.md)** - Executive summary of what was created
+1. **[IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)** - Implementation scaffold and execution priorities
 2. **[examples/COLLABORATIVE_ORG_QUICKSTART.md](examples/COLLABORATIVE_ORG_QUICKSTART.md)** - Get started in 15 minutes
 3. **[docs/COLLABORATIVE_ORG_ARCHITECTURE.md](docs/COLLABORATIVE_ORG_ARCHITECTURE.md)** - Complete architecture reference
 
@@ -41,9 +41,9 @@ This directory contains the complete architecture and implementation plan for us
   - Creating custom packages
   - Best practices
 
-### Planning Documents
-- **[PLANNING_COMPLETE.md](PLANNING_COMPLETE.md)** - Consolidation summary
-- **[docs/PLANNING_AUDIT.md](docs/PLANNING_AUDIT.md)** - Design decisions and rationale
+### Implementation and Decision Records
+- **[IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)** - High-level implementation scaffold
+- **[CONSOLIDATION_DECISIONS.md](CONSOLIDATION_DECISIONS.md)** - Historical consolidation decisions and rationale
 - **[docs/decisions/](docs/decisions/)** - Auditable architecture decision records (ADRs)
 
 ## 📦 Entity Packages
@@ -170,7 +170,7 @@ semops journey start decision-refinement MTG-security-review
 - [ ] Phase 4: Authority-weighted RAG (Week 7-8)
 - [ ] Phase 5: Integration testing (Week 9-10)
 
-See [PLANNING_COMPLETE.md](PLANNING_COMPLETE.md) for detailed roadmap.
+See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for detailed roadmap.
 
 ## 🎯 Design Principles
 
@@ -203,26 +203,25 @@ See [examples/entity_packages/README.md](examples/entity_packages/README.md) for
 
 ```
 /workspace/
-├── COLLABORATIVE_ORG_INDEX.md ← YOU ARE HERE
-├── PLANNING_COMPLETE.md
+└── docs/
+    ├── COLLABORATIVE_ORG_INDEX.md ← YOU ARE HERE
+    ├── IMPLEMENTATION_PLAN.md
+    ├── CONSOLIDATION_DECISIONS.md
+    └── COLLABORATIVE_ORG_ARCHITECTURE.md ← Core architecture
 │
-├── docs/
-│   ├── COLLABORATIVE_ORG_ARCHITECTURE.md ← Core architecture
-│   └── PLANNING_AUDIT.md
+/workspace/examples/
+├── COLLABORATIVE_ORG_QUICKSTART.md ← Start here
+├── TEMPLATE_EVOLUTION_GUIDE.md
 │
-└── examples/
-    ├── COLLABORATIVE_ORG_QUICKSTART.md ← Start here
-    ├── TEMPLATE_EVOLUTION_GUIDE.md
-    │
-    ├── config/
-    │   └── collaborative_org_config_v2.yaml ← Main config
-    │
-    └── entity_packages/ ← Modular entity definitions
-        ├── README.md
-        ├── domain/
-        ├── decision/
-        ├── policy/
-        └── constitution/
+├── config/
+│   └── collaborative_org_config_v2.yaml ← Main config
+│
+└── entity_packages/ ← Modular entity definitions
+    ├── README.md
+    ├── domain/
+    ├── decision/
+    ├── policy/
+    └── constitution/
 ```
 
 ## 📝 Quick Reference
@@ -255,7 +254,7 @@ semops relationship add establishes DEC-001 POL-001
 
 ---
 
-**Status**: Planning complete, ready for implementation
+**Status**: Architecture baseline established; implementation planning active
 **Date**: 2026-02-26
 **Context**: ~100K tokens of careful planning and consolidation
 

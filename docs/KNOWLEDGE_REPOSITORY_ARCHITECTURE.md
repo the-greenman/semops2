@@ -2,7 +2,7 @@
 
 ## Overview
 
-SemOps2's knowledge repository provides a generic, extensible framework for managing diverse knowledge sources and retrieval methods. Instead of the current hardcoded external/internal source types and single ChromaDB vector store, the new system supports unlimited source types, multiple storage backends (vector, graph, hybrid), and configurable processing pipelines.
+SemOps2's knowledge repository provides a generic, extensible framework for managing diverse knowledge sources and retrieval methods. Instead of the historical hardcoded external/internal source types and single ChromaDB vector store pattern, the SemOps2 architecture supports unlimited source types, multiple storage backends (vector, graph, hybrid), and configurable processing pipelines.
 
 Persistence invariant (ADR-0001): canonical operational records remain markdown + frontmatter documents. Knowledge graph, entity graph, and vector stores are derived projections for retrieval and traversal, maintained synchronously or via durable queued reconciliation.
 
@@ -15,11 +15,11 @@ Design constraints:
 - Pipeline behavior remains configuration-driven via `.semops/config/*` files.
 - Vector backend choice remains environment-specific (e.g., Chroma for local development, Qdrant for production) without changing domain-level behavior.
 
-## Current RAG System Problems
+## Legacy Constraints (Historical RAG Context)
 
 ### Hardcoded Source Types
 ```python
-# Current rigid categorization
+# Historical rigid categorization
 source_types = ["external", "internal"]  # Only 2 types supported
 processing = {
     "external": web_download_pipeline,

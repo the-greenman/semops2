@@ -609,21 +609,21 @@ Feature: Audit logging for entity lifecycle events
   So that I can track who (or what) changed what, and when
 
   Scenario: Creating an entity generates an audit log
-    Given the actor is "agent:creation-bot"
+    Given the actor is "ACT-creation-bot"
     When the actor creates a new problem with name "API Latency Spike"
     Then a structured audit log is created with:
       | field            | value                       |
-      | actor_id         | "agent:creation-bot"        |
+      | actor_id         | "ACT-creation-bot"          |
       | action           | "entity.create"             |
       | target_entity_id | "PROB-api-latency-spike"    |
 
   Scenario: Updating an entity generates an audit log
     Given a problem with ID "PROB-api-latency-spike" exists
-    And the actor is "user:jane.doe"
+    And the actor is "ACT-human-jane-doe"
     When the actor updates the problem's description
     Then a structured audit log is created with:
       | field            | value                       |
-      | actor_id         | "user:jane.doe"             |
+      | actor_id         | "ACT-human-jane-doe"        |
       | action           | "entity.update"             |
       | target_entity_id | "PROB-api-latency-spike"    |
       | details          | "description field updated" |

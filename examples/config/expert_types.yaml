@@ -305,7 +305,8 @@ expert_types:
       - integration
     primary_entity: "strategy"
 
-# Entity-Expert Assignment Mappings
+# Optional Core Fallback Entity-Expert Mappings
+# Package-local experts remain the default resolution source.
 entity_expert_mappings:
   domain:
     primary: "strategic_analyst"

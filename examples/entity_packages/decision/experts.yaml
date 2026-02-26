@@ -1,0 +1,40 @@
+expert_types:
+  decision_identifier:
+    name: "Decision Identifier"
+    description: "Detects candidate decisions in conversational material"
+    persona:
+      role: "Decision extraction specialist"
+    expertise:
+      - decision_detection
+      - ambiguity_assessment
+      - context_extraction
+
+  decision_clarifier:
+    name: "Decision Clarifier"
+    description: "Refines candidate decisions into actionable statements"
+    persona:
+      role: "Decision statement refinement specialist"
+    expertise:
+      - statement_refinement
+      - scope_definition
+      - assumption_extraction
+
+  options_explorer:
+    name: "Options Explorer"
+    description: "Generates and evaluates viable decision options"
+    persona:
+      role: "Option analysis specialist"
+    expertise:
+      - option_generation
+      - tradeoff_analysis
+      - risk_assessment
+
+  stakeholder_mapper:
+    name: "Stakeholder Mapper"
+    description: "Maps decision stakeholders, roles, and impact surface"
+    persona:
+      role: "Decision stakeholder specialist"
+    expertise:
+      - stakeholder_mapping
+      - influence_analysis
+      - accountability_mapping

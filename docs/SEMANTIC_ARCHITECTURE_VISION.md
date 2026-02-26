@@ -675,24 +675,33 @@ refresh = await mcp.call_tool("semops_check_context_updates", {
 
 ## Cross-Actor Collaboration Patterns
 
+### Actor-Expert Invocation Contract
+
+For consistency with package-local expert architecture:
+- External actors invoke analysis with `actor_id` and `expert_type`.
+- Journey stages may declare `agent.role`, but runtime resolves that alias to a concrete `expert_type` using package-first precedence.
+- Any resulting mutations remain Entity Server writes with `created_by_actor_id` / `updated_by_actor_id`.
+
 ### Pattern 1: Proposer Actor, Human Decides
 
 ```python
 # 1. Actor analyzes meeting and identifies decisions
 decisions = await mcp.call_tool("semops_expert_analyze", {
-    "expert_role": "decision_identifier",
+    "actor_id": "ACT-assistant-007",
+    "expert_type": "decision_identifier",
     "entity_id": "MTG-weekly-sync",
-    "task": "identify_decisions"
+    "workflow": "decision-identification",
+    "parameters": {"instruction": "identify_decisions"}
 })
 
 # 2. Actor creates draft decisions (allowed)
 for decision in decisions:
     # Mutation boundary invariant: this call must route through Entity Server.
     draft_id = await mcp.call_tool("semops_create_entity", {
-        "entity_type": "decision",
+        "entity_type": "semops.core/decision",
         "status": "draft",  # Explicitly draft
         "fields": decision,
-        "created_by": "ACT-assistant-007"
+        "created_by_actor_id": "ACT-assistant-007"
     })
 
 # 3. Actor requests human review (boundary)
@@ -721,19 +730,21 @@ pattern = await mcp.call_tool("semops_detect_patterns", {
 
 # 2. Actor synthesizes emerging need
 synthesis = await mcp.call_tool("semops_expert_analyze", {
-    "expert_role": "policy_synthesizer",
-    "context": pattern,
-    "task": "identify_policy_need"
+    "actor_id": "ACT-assistant-007",
+    "expert_type": "policy_synthesizer",
+    "entity_id": "CONV-actor-boundaries-summary",
+    "workflow": "policy-need-synthesis",
+    "parameters": {"pattern_summary": pattern, "instruction": "identify_policy_need"}
 })
 
 # 3. Actor proposes (creates conversation, not policy)
 proposal_id = await mcp.call_tool("semops_create_entity", {
     # Mutation boundary invariant: this call must route through Entity Server.
-    "entity_type": "conversation",  # Not policy - this actor cannot create policy
+    "entity_type": "semops.core/conversation",  # Not policy - this actor cannot create policy
     "conversation_name": "Proposal: Actor Decision Boundary Policy",
     "content": synthesis,
     "tagged_roles": ["ROLE-governance-lead"],
-    "created_by": "ACT-assistant-007"
+    "created_by_actor_id": "ACT-assistant-007"
 })
 
 # 4. Humans discuss, refine, and create policy through governance process

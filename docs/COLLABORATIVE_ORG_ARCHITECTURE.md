@@ -236,12 +236,17 @@ To keep orchestration concerns clear:
    - Own stage sequencing, human checkpoints, and commit transitions
    - Operate over flat root collections with relationship links (not nested entity directories)
 
-2. **Analysis workflows are reusable expert pipelines**
+2. **Expert profiles are package-local by default**
+   - Defined in `entity_packages/<entity>/experts.yaml`
+   - Journey `ai.assist` stages resolve `agent.role` from package experts first
+   - Optional shared baseline may exist in `.semops/config/expert_types.yaml`
+
+3. **Analysis workflows are reusable expert pipelines**
    - Defined in `.semops/config/workflows.yaml`
    - Reused across entities through `applicable_entity_types`
    - May be invoked from journey stages or executed directly via CLI/API/MCP without a journey
 
-3. **RAG workflows are retrieval-only**
+4. **RAG workflows are retrieval-only**
    - Defined in `.semops/config/rag_workflows.yaml`
    - Control retrieval/ranking/context assembly
    - Do not own lifecycle transitions
@@ -255,6 +260,7 @@ Each entity type is a self-contained package:
 ```
 entity_packages/domain/
 ├── entity_definition.yaml      # Entity type config
+├── experts.yaml                # Package-local expert profiles
 ├── journey_definition.yaml     # Interactive refinement process
 ├── migration_rules.yaml        # Template evolution rules
 └── templates/
@@ -584,6 +590,7 @@ journey = load_journey("domain-definition")
 
 # Convert to LangGraph workflow
 class JourneyState(TypedDict):
+    actor_id: str
     draft_entity: dict
     scope_proposal: dict
     approved_scope: dict
@@ -593,15 +600,27 @@ class JourneyState(TypedDict):
 
 def draft_creation(state: JourneyState):
     # Human input collected via CLI
-    return {"draft_entity": user_input}
+    return {
+        "draft_entity": user_input,
+        "entity_id": allocate_draft_entity_id("semops.core/domain")
+    }
 
 async def scope_clarification(state: JourneyState):
     # AI assistance via MCP
+    expert_type = resolve_expert_type(
+        entity_type="semops.core/domain",
+        role=journey.stages["scope_clarification"].agent.role
+    )
     async with get_semops_client() as mcp:
         result = await mcp.call_tool("semops_expert_analyze", {
-            "expert_role": "domain_architect",
-            "content": state["draft_entity"],
-            "task": journey.stages["scope_clarification"].task
+            "actor_id": state["actor_id"],
+            "entity_id": state["entity_id"],
+            "expert_type": expert_type,
+            "workflow": "journey-stage-analysis",
+            "parameters": {
+                "content": state["draft_entity"],
+                "task": journey.stages["scope_clarification"].task
+            }
         })
     return {"scope_proposal": result}
 
