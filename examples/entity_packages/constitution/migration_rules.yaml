@@ -1,0 +1,10 @@
+current_version: "1.0.0"
+migrations: {}
+strategies:
+  manual:
+    description: "Constitutional changes require human oversight"
+    requires_approval: true
+rollback:
+  enabled: true
+  backup_location: ".semops/backups/migrations"
+  retention_policy: "365_days"  # Longer retention for constitutional docs

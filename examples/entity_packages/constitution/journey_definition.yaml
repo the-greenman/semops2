@@ -1,0 +1,33 @@
+# Constitution Ratification Journey
+
+entity_journey:
+  journey_id: "constitution_ratification"
+  entity_type: "org.collaborative/constitution"
+  journey_type: "creation_refinement"
+  description: "High-stakes process to create foundational governing documents"
+
+  checkpoint_after_each_stage: true
+  allow_pause_resume: true
+  allow_restart: true
+
+  stages:
+    - name: "draft_constitution"
+      type: "human.create"
+      required_fields: ["constitution_name", "principles"]
+
+    - name: "stakeholder_consultation"
+      type: "ai.assist"
+      agent:
+        role: "constitutional_advisor"
+        persona: "You help craft foundational governance documents"
+        expertise: ["governance", "constitutional_design", "consensus_building"]
+
+    - name: "review_draft"
+      type: "human.review"
+
+    - name: "voting_process"
+      type: "human.review"
+      description: "Formal voting on constitution"
+
+    - name: "finalize_constitution"
+      type: "system.commit"

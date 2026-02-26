@@ -1,0 +1,61 @@
+# Decision Entity Type Definition
+# Part of the collaborative organization entity package set
+
+entity_type:
+  type_key: "decision"
+  namespace: "semops.core"
+  id_prefix: "DEC"
+  name_field: "decision_name"
+  slug_field: "decision_slug"
+
+  display_name: "Decision"
+  description: "Formal decisions with rationale, context, and accountability"
+
+  # Template configuration
+  template_bundle:
+    create: "create.md.j2"
+    analyze: "analyze.md.j2"
+    prompts:
+      clarify_statement: "prompts/clarify-statement.txt"
+      explore_options: "prompts/explore-options.txt"
+      identify_stakeholders: "prompts/identify-stakeholders.txt"
+
+  # Template version for this package
+  template_version: "1.0.0"
+
+  # File organization
+  directory_name: "decisions"
+  filename_pattern: "{entity_type}.md"
+  nesting_strategy: "root"
+
+  # Entity relationships
+  parent_entity: null
+  child_entities: []
+
+  # Field requirements
+  required_fields:
+    - "decision_name"
+    - "decision_statement"
+    - "decision_makers"
+    - "status"
+
+  optional_fields:
+    - "decision_type"
+    - "rationale"
+    - "options_considered"
+    - "stakeholders"
+    - "decision_process"
+    - "authority_source"
+    - "effective_date"
+
+  unique_fields:
+    - "decision_slug"
+
+  # Context and discoverability
+  context_level: 1
+
+  # CLI commands
+  list_command: true
+  get_command: true
+  create_command: true
+  analyze_command: true

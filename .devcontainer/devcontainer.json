@@ -1,7 +1,11 @@
 {
   "name": "SemOps2 Dev Container",
   "build": {
-    "dockerfile": "Dockerfile"
+    "context": "..",
+    "dockerfile": "Dockerfile",
+    "args": {
+      "REQUIREMENTS_FILE": "requirements-devcontainer.txt"
+    }
   },
   "workspaceFolder": "/workspace",
   "customizations": {
@@ -13,6 +17,6 @@
       ]
     }
   },
-  "postCreateCommand": "buf generate",
+  "postCreateCommand": "task buf:dep:update && task buf:generate",
   "remoteUser": "root"
 }

@@ -3,6 +3,7 @@ syntax = "proto3";
 package semops.v1;
 
 import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
 import "semops/v1/core.proto";
 import "semops/v1/entities.proto";
 
@@ -42,7 +43,7 @@ message ListEntitiesRequest {
   string entity_type = 1;
 
   // Optional: The ID of the parent entity to scope the list.
-  string parent_id = 2;
+  EntityID parent_id = 2;
 }
 
 // Response containing a list of entities.
@@ -57,7 +58,7 @@ message ListEntitiesResponse {
 // Request to get a single entity.
 message GetEntityRequest {
   // The unique ID of the entity to retrieve.
-  string entity_id = 1;
+  EntityID entity_id = 1;
 
   // Whether to include content or just metadata
   bool include_content = 2;
@@ -77,7 +78,7 @@ message CreateEntityRequest {
   string name = 2;
 
   // Optional: The ID of the parent entity.
-  string parent_id = 3;
+  EntityID parent_id = 3;
 
   // Variables to be injected into the Jinja2 template.
   google.protobuf.Struct variables = 4;
@@ -94,7 +95,7 @@ message CreateEntityResponse {
 // Request to update an existing entity.
 message UpdateEntityRequest {
   // The unique ID of the entity to update.
-  string entity_id = 1;
+  EntityID entity_id = 1;
 
   // Updated variables to be merged with template.
   google.protobuf.Struct variables = 2;
@@ -114,7 +115,7 @@ message UpdateEntityResponse {
 // Request to delete an entity.
 message DeleteEntityRequest {
   // The unique ID of the entity to delete.
-  string entity_id = 1;
+  EntityID entity_id = 1;
 
   // Whether to delete child entities as well.
   bool cascade = 2;
@@ -132,7 +133,7 @@ message DeleteEntityResponse {
 // Request to analyze an entity.
 message AnalyzeEntityRequest {
   // The unique ID of the entity to analyze.
-  string entity_id = 1;
+  EntityID entity_id = 1;
 
   // Type of expert analysis to perform.
   string expert_type = 2;
@@ -162,7 +163,7 @@ message AnalyzeEntityResponse {
 // Request to validate an entity.
 message ValidateEntityRequest {
   // The unique ID of the entity to validate.
-  string entity_id = 1;
+  EntityID entity_id = 1;
 
   // Whether to validate content or just structure.
   bool validate_content = 2;
@@ -195,13 +196,16 @@ message DetectContextResponse {
 // Request to get entity relationships.
 message GetEntityRelationshipsRequest {
   // The unique ID of the entity.
-  string entity_id = 1;
+  EntityID entity_id = 1;
 
   // Maximum depth to traverse.
   int32 max_depth = 2;
 
   // Types of relationships to include.
   repeated string relationship_types = 3;
+
+  // Which direction(s) of relationships to return relative to entity_id.
+  RelationshipDirection direction = 4;
 }
 
 // Response containing entity relationships.
@@ -210,17 +214,44 @@ message GetEntityRelationshipsResponse {
   repeated EntityRelationship relationships = 1;
 }
 
+// Direction of relationship traversal.
+enum RelationshipDirection {
+  RELATIONSHIP_DIRECTION_UNSPECIFIED = 0;
+  RELATIONSHIP_DIRECTION_OUTBOUND = 1;
+  RELATIONSHIP_DIRECTION_INBOUND = 2;
+  RELATIONSHIP_DIRECTION_BOTH = 3;
+}
+
+// Relationship lifecycle status.
+enum RelationshipStatus {
+  RELATIONSHIP_STATUS_UNSPECIFIED = 0;
+  RELATIONSHIP_STATUS_PROPOSED = 1;
+  RELATIONSHIP_STATUS_ACTIVE = 2;
+  RELATIONSHIP_STATUS_REJECTED = 3;
+  RELATIONSHIP_STATUS_ARCHIVED = 4;
+}
+
 // Entity relationship information.
 message EntityRelationship {
+  // Stable identifier for this relationship.
+  string relationship_id = 1;
+
   // Source entity ID.
-  string from_entity_id = 1;
+  EntityID from_entity_id = 2;
 
   // Target entity ID.
-  string to_entity_id = 2;
+  EntityID to_entity_id = 3;
 
   // Relationship type.
-  string relationship_type = 3;
+  string relationship_type = 4;
 
   // Relationship metadata.
-  google.protobuf.Struct metadata = 4;
+  google.protobuf.Struct metadata = 5;
+
+  // Lifecycle status for collaborative governance workflows.
+  RelationshipStatus status = 6;
+
+  // Timestamps for auditing and sync.
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
 }

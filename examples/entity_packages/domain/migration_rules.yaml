@@ -1,0 +1,90 @@
+# Domain Entity Template Migration Rules
+# Defines how to migrate domain entities between template versions
+
+# Current template version for this package
+current_version: "1.0.0"
+
+# Migration paths
+migrations:
+
+  # Future example: 1.0.0 → 1.1.0 (when we add authority_level field)
+  # "1.0.0 → 1.1.0":
+  #   breaking: false
+  #   strategy: "llm_assisted"
+  #
+  #   changes:
+  #     added_fields:
+  #       - field: "authority_level"
+  #         type: "string"
+  #         required: true
+  #         infer_from: ["domain_name", "purpose", "scope_included"]
+  #         prompt: |
+  #           Based on the domain name, purpose, and scope, determine the authority
+  #           level for this domain. Options: HIGH, MEDIUM, LOW.
+  #
+  #           HIGH: Involves governance, security, compliance, or constitutional matters
+  #           MEDIUM: Core operational domains with significant impact
+  #           LOW: Supporting or exploratory domains
+  #
+  #   validation:
+  #     - check: "authority_level in ['HIGH', 'MEDIUM', 'LOW']"
+  #       error_message: "authority_level must be HIGH, MEDIUM, or LOW"
+  #
+  #   rollback_supported: true
+  #   backup_retention_days: 90
+
+  # No migrations yet - this is v1.0.0
+
+# Migration strategy definitions
+strategies:
+
+  automated:
+    description: "Direct field mapping with no human review"
+    requires_approval: false
+    workflow:
+      - action: "backup_entity"
+      - action: "apply_field_mappings"
+      - action: "validate_new_format"
+      - action: "commit_changes"
+
+  llm_assisted:
+    description: "AI infers new fields from context, then applies migration"
+    requires_approval: false
+    workflow:
+      - action: "backup_entity"
+      - action: "load_entity_context"
+      - action: "llm_infer_fields"
+      - action: "apply_new_template"
+      - action: "validate_migration"
+      - action: "commit_changes"
+
+  llm_assisted_with_review:
+    description: "AI infers fields, human reviews and approves before committing"
+    requires_approval: true
+    workflow:
+      - action: "backup_entity"
+      - action: "load_entity_context"
+      - action: "llm_infer_fields"
+      - action: "generate_migration_preview"
+      - action: "human_review"
+        pause_for_review: true
+      - action: "apply_new_template"
+      - action: "commit_changes"
+
+  manual:
+    description: "Complex changes requiring human work"
+    requires_approval: true
+    workflow:
+      - action: "backup_entity"
+      - action: "generate_migration_guide"
+      - action: "human_manual_edit"
+        pause_for_edit: true
+      - action: "validate_new_format"
+      - action: "commit_changes"
+
+# Rollback configuration
+rollback:
+  enabled: true
+  backup_location: ".semops/backups/migrations"
+  retention_policy: "90_days"
+  restore_relationships: true

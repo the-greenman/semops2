@@ -34,7 +34,7 @@ source_types:
 
     storage:
       primary: "vector_store"
-      secondary: ["graph_store"]
+      secondary: ["knowledge_graph"]
 
     protocols: ["https"]
     domains: ["nist.gov", "owasp.org", "cisecurity.org", "sans.org"]
@@ -63,7 +63,7 @@ source_types:
 
     storage:
       primary: "vector_store"
-      secondary: ["vendor_knowledge_graph"]
+      secondary: ["knowledge_graph"]
 
     protocols: ["https"]
     domains: ["docs.aws.amazon.com", "docs.microsoft.com", "cloud.google.com"]
@@ -92,7 +92,7 @@ source_types:
 
     storage:
       primary: "vector_store"
-      secondary: ["research_graph"]
+      secondary: ["knowledge_graph"]
 
     protocols: ["file", "https"]
     mime_types: ["application/pdf"]
@@ -121,7 +121,7 @@ source_types:
       enrichers: ["ast_enricher", "security_pattern_enricher", "dependency_enricher"]
 
     storage:
-      primary: "graph_store"
+      primary: "knowledge_graph"
       secondary: ["vector_store"]
 
     protocols: ["git", "github"]
@@ -151,7 +151,7 @@ source_types:
 
     storage:
       primary: "vector_store"
-      secondary: ["organizational_graph"]
+      secondary: ["knowledge_graph"]
 
     protocols: ["file", "sharepoint"]
 
@@ -229,7 +229,7 @@ expert_chunking_preferences:
 # =============================================================================
 
 storage_backends:
-  # Primary vector store for semantic search
+  # ── Vector store (KnowledgeService) ────────────────────────────────────────
   vector_store:
     type: "vector"
     implementation: "chromadb"
@@ -246,42 +246,70 @@ storage_backends:
       - name: "security_documentation"
         embedding_model: "sentence-transformers/all-mpnet-base-v2"
       - name: "technical_guides"
-        embedding_model: "sentence-transformers/all-MiniLM-L6-v2"  # Faster for technical content
+        embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
       - name: "code_snippets"
-        embedding_model: "microsoft/codebert-base"  # Code-specific embeddings
+        embedding_model: "microsoft/codebert-base"
 
-  # Knowledge graph for relationships
-  graph_store:
+  # ── Knowledge graph (KnowledgeService) ─────────────────────────────────────
+  # Stores documents, chunks, and domain concepts. Used by graph_enhanced RAG.
+  # Do NOT store ops entities here — those belong in entity_graph.
+  knowledge_graph:
     type: "graph"
+    role: "knowledge"
     implementation: "neo4j"
     configuration:
-      uri: "bolt://localhost:7687"
-      database: "cloud_security"
-      auth:
-        username_env: "NEO4J_USERNAME"
-        password_env: "NEO4J_PASSWORD"
+      url: "bolt://localhost:7687"
+      username_env: "NEO4J_USERNAME"
+      password_env: "NEO4J_PASSWORD"
+      database: "semops_knowledge"
 
-    node_types:
-      - "SecurityControl"
-      - "ThreatModel"
-      - "ComplianceFramework"
-      - "SecurityTool"
-      - "Vulnerability"
+    schema:
+      node_types:
+        - "Document"
+        - "Chunk"
+        - "SecurityControl"
+        - "ThreatModel"
+        - "ComplianceFramework"
+        - "SecurityTool"
+        - "Vulnerability"
+        - "Concept"
+      relationship_types:
+        - "CONTAINS"        # Document → Chunk
+        - "IMPLEMENTS"      # Control → Framework
+        - "MITIGATES"       # Control → Threat/Vulnerability
+        - "REQUIRES"        # Framework → Control
+        - "RELATES_TO"
+        - "SIMILAR_TO"      # Chunk → Chunk
 
-    relationship_types:
-      - "IMPLEMENTS"
-      - "MITIGATES"
-      - "REQUIRES"
-      - "RELATES_TO"
-      - "PART_OF"
-
-  # Specialized stores
-  vendor_knowledge_graph:
+  # ── Entity graph (EntityService) ───────────────────────────────────────────
+  # Stores ops entities and their typed relationships (domains, decisions,
+  # meetings, roles, …). Used by GetEntityRelationships RPC.
+  # Do NOT store knowledge content here — that belongs in knowledge_graph.
+  entity_graph:
     type: "graph"
-    implementation: "networkx"
+    role: "entity"
+    implementation: "neo4j"
     configuration:
-      persist_directory: "/domains/cloud-security/knowledge/.vendor_graph"
-      focus: "vendor_relationships"
+      url: "bolt://localhost:7687"
+      username_env: "NEO4J_USERNAME"
+      password_env: "NEO4J_PASSWORD"
+      database: "semops_entities"   # separate database on same Neo4j server
+
+    schema:
+      node_label: "Entity"
+      node_properties:
+        - "entity_id"
+        - "entity_type"     # FQ: "semops.core/decision"
+        - "namespace"
+        - "slug"
+        - "name"
+        - "status"
+      relationship_properties:
+        - "relationship_id"
+        - "relationship_type"   # FQ: "semops.core/part_of"
+        - "namespace"
+        - "status"
+        - "metadata"
 
 # =============================================================================
 # RAG WORKFLOW CONFIGURATIONS
@@ -323,26 +351,48 @@ rag_workflows:
       - type: "rerank"
         top_k: 10
 
-  # Graph-enhanced retrieval
+  # Graph-enhanced retrieval (knowledge graph — documents/concepts)
   graph_enhanced:
     name: "Graph-Enhanced Retrieval"
-    description: "Uses knowledge graph relationships"
+    description: "Expands vector results through the knowledge graph (documents, concepts, controls)"
     steps:
       - type: "vector_search"
         backend: "vector_store"
         parameters:
           top_k: 10
       - type: "graph_expansion"
-        backend: "graph_store"
+        backend: "knowledge_graph"      # knowledge graph only
         parameters:
           max_depth: 2
-          relationship_types: ["RELATES_TO", "IMPLEMENTS"]
+          relationship_types: ["RELATES_TO", "IMPLEMENTS", "MITIGATES"]
           expansion_factor: 3
       - type: "relevance_filter"
         threshold: 0.5
       - type: "diversify"
         algorithm: "mmr"
         lambda: 0.7
+
+  # Entity graph traversal (entity graph — ops entities)
+  entity_graph_traversal:
+    name: "Entity Graph Traversal"
+    description: "Traverses the entity graph to gather related entity IDs, then scopes a vector search to their associated sources"
+    steps:
+      - type: "entity_graph_expand"
+        backend: "entity_graph"         # entity graph only
+        parameters:
+          max_depth: 2
+          relationship_types: ["part_of", "affects", "made_in", "produces"]
+          direction: "both"
+      - type: "source_scope"
+        # Collects entity_ids from expansion, looks up associated KnowledgeSources
+        use_entity_ids: true
+      - type: "vector_search"
+        backend: "vector_store"
+        parameters:
+          top_k: 15
+          scope_to_entity_sources: true
+      - type: "rerank"
+        top_k: 10
 
   # Expert-specific retrieval
   expert_context_search:
@@ -522,9 +572,9 @@ deployment:
 
   # Service dependencies
   dependencies:
-    - "chromadb"
-    - "neo4j"
-    - "redis"  # For caching
+    - "chromadb"             # vector_store
+    - "neo4j"                # knowledge_graph (semops_knowledge db) + entity_graph (semops_entities db)
+    - "redis"                # caching
 
   # Backup and recovery
   backup:

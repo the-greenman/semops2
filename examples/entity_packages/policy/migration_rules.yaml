@@ -1,0 +1,10 @@
+current_version: "1.0.0"
+migrations: {}
+strategies:
+  llm_assisted:
+    description: "AI infers new fields from context"
+    requires_approval: false
+rollback:
+  enabled: true
+  backup_location: ".semops/backups/migrations"
+  retention_policy: "90_days"

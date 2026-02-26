@@ -1,0 +1,828 @@
+# SemOps2 Configuration for Collaborative Organization Governance
+#
+# This configuration supports a collaborative organization establishing:
+# - Transparent operational records for humans and AI
+# - Domain exploration with resource collection
+# - Discussion recording and transcription
+# - Decision-making with evolving policy
+# - Role assignment and accountability
+# - Authority-weighted knowledge sources
+
+# =============================================================================
+# WORKSPACE CONFIGURATION
+# =============================================================================
+
+workspace:
+  name: "collaborative-organization"
+  description: "Building capacity for effective group cooperation"
+  root_path: "/workspace/org"
+
+# =============================================================================
+# ENTITY TYPES FOR ORGANIZATIONAL GOVERNANCE
+# =============================================================================
+#
+# SemOps2 ships with built-in entity types under namespace "semops.core":
+#   - domain: Bounded operational areas
+#   - role: Accountable parties
+#   - meeting: Recorded sessions
+#   - decision: Recorded decisions with rationale
+#   - conversation: Informal/async exchanges
+#   - artefact: Documents, diagrams, outputs
+#
+# These are defined in the built-in entity_types.yaml and don't need to be
+# redefined here. However, you can extend them with custom types:
+
+entity_types:
+
+  # Custom: Constitution document entity
+  constitution:
+    namespace: "org.collaborative"
+    id_prefix: "CONST"
+    name_field: "constitution_name"
+    slug_field: "constitution_slug"
+
+    template_bundle:
+      create: "constitution.md.j2"
+      analyze: "constitution-analysis.md.j2"
+      prompts:
+        extract_principles: "prompts/constitution-extract-principles.txt"
+        validate_consistency: "prompts/constitution-validate-consistency.txt"
+
+    directory_name: "constitution"
+    filename_pattern: "{entity_type}.md"
+    nesting_strategy: "root"
+
+    parent_entity: null
+    child_entities: []
+
+    required_fields: ["constitution_name", "version", "ratification_date"]
+    unique_fields: ["constitution_slug"]
+    context_level: 1
+
+    list_command: true
+    get_command: true
+    create_command: true
+    analyze_command: true
+    display_name: "Constitution"
+    description: "Foundational governing documents and principles"
+
+  # Custom: Policy entity (derived from decisions)
+  policy:
+    namespace: "org.collaborative"
+    id_prefix: "POL"
+    name_field: "policy_name"
+    slug_field: "policy_slug"
+
+    template_bundle:
+      create: "policy.md.j2"
+      analyze: "policy-analysis.md.j2"
+      prompts:
+        assess_impact: "prompts/policy-assess-impact.txt"
+        check_compliance: "prompts/policy-check-compliance.txt"
+        identify_stakeholders: "prompts/policy-identify-stakeholders.txt"
+
+    directory_name: "policies"
+    filename_pattern: "{entity_type}.md"
+    nesting_strategy: "root"
+
+    parent_entity: null
+    child_entities: []
+
+    required_fields: ["policy_name", "effective_date", "status", "authority_level"]
+    unique_fields: ["policy_slug"]
+    context_level: 1
+
+    list_command: true
+    get_command: true
+    create_command: true
+    analyze_command: true
+    display_name: "Policy"
+    description: "Established policies with authority levels and enforcement"
+
+# =============================================================================
+# RELATIONSHIP TYPES FOR GOVERNANCE
+# =============================================================================
+#
+# Built-in relationship types (semops.core namespace):
+#   - made_in: decision → meeting
+#   - part_of: decision/meeting/role → domain
+#   - affects: decision → domain/role
+#   - participates_in: role → meeting/conversation
+#   - produces: meeting/conversation → artefact
+#   - references: meeting/conversation/decision → artefact
+#   - depends_on: domain → domain
+#
+# Custom relationships for your governance model:
+
+relationship_types:
+
+  # A decision establishes a policy
+  establishes:
+    namespace: "org.collaborative"
+    from_types: ["semops.core/decision"]
+    to_types: ["org.collaborative/policy"]
+    cardinality: one_to_one
+    required: false
+    share_sources: true
+    max_depth: 1
+
+  # A policy is governed by the constitution
+  governed_by:
+    namespace: "org.collaborative"
+    from_types: ["org.collaborative/policy"]
+    to_types: ["org.collaborative/constitution"]
+    cardinality: many_to_one
+    required: true
+    share_sources: true
+    max_depth: 1
+
+  # A policy supersedes an older policy
+  supersedes:
+    namespace: "org.collaborative"
+    from_types: ["org.collaborative/policy"]
+    to_types: ["org.collaborative/policy"]
+    cardinality: one_to_many
+    required: false
+    share_sources: false
+
+  # A decision ratifies/approves another entity (policy, role, domain)
+  ratifies:
+    namespace: "org.collaborative"
+    from_types: ["semops.core/decision"]
+    to_types:
+      - "org.collaborative/policy"
+      - "semops.core/role"
+      - "semops.core/domain"
+      - "org.collaborative/constitution"
+    cardinality: many_to_many
+    required: false
+    share_sources: false
+    metadata_schema:
+      - field: ratification_type
+        type: string
+        required: true
+        # e.g., "unanimous", "majority", "consensus"
+      - field: vote_count
+        type: integer
+        required: false
+
+  # A role holds authority over a domain
+  holds_authority:
+    namespace: "org.collaborative"
+    from_types: ["semops.core/role"]
+    to_types: ["semops.core/domain"]
+    cardinality: many_to_many
+    required: false
+    share_sources: true
+    metadata_schema:
+      - field: authority_level
+        type: string
+        required: true
+        # e.g., "decision_maker", "advisor", "observer"
+      - field: scope
+        type: string
+        required: false
+        # e.g., "full", "budget_only", "technical_only"
+
+  # An artefact informs (provides context to) a decision
+  informs:
+    namespace: "org.collaborative"
+    from_types: ["semops.core/artefact"]
+    to_types: ["semops.core/decision"]
+    cardinality: many_to_many
+    required: false
+    share_sources: true
+
+# =============================================================================
+# SOURCE TYPES WITH AUTHORITY LEVELS
+# =============================================================================
+#
+# Different source types have different authority weights to distinguish
+# between exploratory statements and established standards.
+
+source_types:
+
+  # Highest authority: Ratified constitution and official standards
+  constitutional_documents:
+    name: "Constitutional Documents"
+    description: "Ratified governing documents and foundational principles"
+    icon: "📜"
+
+    pipeline:
+      extractor: "file_extractor"
+      processor: "markdown_converter"
+      chunking:
+        strategy: "recursive"
+        chunk_size: 1000
+        overlap: 150
+        separators: ["\n## ", "\n### ", "\n\n"]
+        preserve_structure: true
+      enrichers: ["metadata_enricher", "principle_enricher", "cross_reference_enricher"]
+
+    storage:
+      primary: "vector_store"
+      secondary: ["knowledge_graph"]
+
+    protocols: ["file"]
+
+    options:
+      authority_weight: 1.0  # Highest authority
+      update_frequency: "on_change"
+      require_ratification: true
+
+  # High authority: Formal decisions and policies
+  formal_decisions:
+    name: "Formal Decisions and Policies"
+    description: "Ratified decisions and established policies"
+    icon: "⚖️"
+
+    pipeline:
+      extractor: "file_extractor"
+      processor: "decision_processor"
+      chunking:
+        strategy: "recursive"
+        chunk_size: 800
+        overlap: 100
+        detect_rationale: true
+        detect_stakeholders: true
+      enrichers: ["decision_enricher", "stakeholder_enricher", "impact_enricher"]
+
+    storage:
+      primary: "vector_store"
+      secondary: ["knowledge_graph"]
+
+    protocols: ["file"]
+
+    options:
+      authority_weight: 0.95  # Very high authority
+      track_version_history: true
+      require_approval: true
+
+  # Medium-high authority: Meeting minutes and formal discussions
+  meeting_records:
+    name: "Meeting Records"
+    description: "Transcribed meetings and formal discussions"
+    icon: "📝"
+
+    pipeline:
+      extractor: "file_extractor"
+      processor: "meeting_processor"
+      chunking:
+        strategy: "recursive"
+        chunk_size: 800
+        overlap: 100
+        detect_meeting_sections: true
+      enrichers:
+        - "attendee_enricher"
+        - "decision_enricher"
+        - "action_item_enricher"
+        - "speaker_enricher"
+
+    storage:
+      primary: "vector_store"
+      secondary: ["knowledge_graph"]
+
+    protocols: ["file"]
+
+    options:
+      authority_weight: 0.75  # Medium-high authority
+      extract_decisions: true
+      extract_actions: true
+      identify_participants: true
+
+  # Medium authority: Working documents and proposals
+  working_documents:
+    name: "Working Documents"
+    description: "Proposals, drafts, and working documents"
+    icon: "📄"
+
+    pipeline:
+      extractor: "file_extractor"
+      processor: "document_processor"
+      chunking:
+        strategy: "semantic"
+        similarity_threshold: 0.6
+        chunk_size: 1000
+        context_window: 2
+      enrichers: ["metadata_enricher", "proposal_enricher", "status_enricher"]
+
+    storage:
+      primary: "vector_store"
+      secondary: ["knowledge_graph"]
+
+    protocols: ["file", "sharepoint"]
+
+    options:
+      authority_weight: 0.6  # Medium authority
+      track_draft_status: true
+      link_to_decisions: true
+
+  # Low-medium authority: Informal conversations
+  informal_discussions:
+    name: "Informal Discussions"
+    description: "Slack threads, email chains, and informal exchanges"
+    icon: "💬"
+
+    pipeline:
+      extractor: "text_extractor"
+      processor: "conversation_processor"
+      chunking:
+        strategy: "sentence"
+        chunk_size: 500
+        overlap: 50
+        preserve_thread_structure: true
+      enrichers: ["participant_enricher", "topic_enricher", "sentiment_enricher"]
+
+    storage:
+      primary: "vector_store"
+      secondary: []
+
+    protocols: ["file", "slack", "email"]
+
+    options:
+      authority_weight: 0.4  # Low-medium authority
+      extract_key_insights: true
+      identify_action_items: true
+      detect_emerging_topics: true
+
+  # Low authority: Exploratory notes and brainstorming
+  exploratory_notes:
+    name: "Exploratory Notes"
+    description: "Brainstorming, exploration, and early-stage thinking"
+    icon: "💭"
+
+    pipeline:
+      extractor: "file_extractor"
+      processor: "text_cleaner"
+      chunking:
+        strategy: "recursive"
+        chunk_size: 600
+        overlap: 100
+        separators: ["\n\n", "\n- ", ". "]
+      enrichers: ["topic_enricher", "question_enricher"]
+
+    storage:
+      primary: "vector_store"
+      secondary: []
+
+    protocols: ["file"]
+
+    options:
+      authority_weight: 0.2  # Low authority
+      tag_as_exploratory: true
+      link_to_formal_outputs: true
+
+  # External reference authority varies by source
+  external_standards:
+    name: "External Standards and References"
+    description: "Industry standards, regulatory frameworks, external research"
+    icon: "🌐"
+
+    pipeline:
+      extractor: "beautifulsoup_extractor"
+      processor: "markdown_converter"
+      chunking:
+        strategy: "recursive"
+        chunk_size: 1200
+        overlap: 150
+        preserve_structure: true
+      enrichers: ["metadata_enricher", "citation_enricher", "authority_enricher"]
+
+    storage:
+      primary: "vector_store"
+      secondary: ["knowledge_graph"]
+
+    protocols: ["https"]
+
+    options:
+      authority_weight: 0.8  # High authority (external standards)
+      validate_sources: true
+      check_currency: true
+
+# =============================================================================
+# EXPERT PERSONAS FOR GOVERNANCE ANALYSIS
+# =============================================================================
+
+expert_types:
+
+  # Governance analyst for constitutional and policy matters
+  governance_analyst:
+    name: "Governance Analyst"
+    persona: "You are an expert in organizational governance, constitutional design, and collaborative decision-making frameworks."
+    expertise:
+      - "constitutional_design"
+      - "policy_development"
+      - "stakeholder_analysis"
+      - "decision_frameworks"
+      - "authority_structures"
+
+    preferred_chunking:
+      strategy: "semantic"
+      chunk_size: 1500
+      overlap: 200
+      context_window: 3
+
+    source_weights:
+      constitutional_documents: 1.0
+      formal_decisions: 0.95
+      meeting_records: 0.7
+      working_documents: 0.5
+      external_standards: 0.8
+
+  # Operations analyst for practical implementation
+  operations_analyst:
+    name: "Operations Analyst"
+    persona: "You are a practical operations expert focused on implementing governance structures and ensuring decisions translate to action."
+    expertise:
+      - "implementation_planning"
+      - "process_design"
+      - "role_clarity"
+      - "action_tracking"
+      - "operational_efficiency"
+
+    preferred_chunking:
+      strategy: "recursive"
+      chunk_size: 1000
+      overlap: 150
+
+    source_weights:
+      formal_decisions: 0.9
+      meeting_records: 0.9
+      working_documents: 0.7
+      informal_discussions: 0.5
+
+  # Strategic facilitator for group dynamics
+  strategic_facilitator:
+    name: "Strategic Facilitator"
+    persona: "You are a group facilitation expert specializing in collaborative processes, consensus-building, and managing diverse stakeholder interests."
+    expertise:
+      - "facilitation_techniques"
+      - "consensus_building"
+      - "conflict_resolution"
+      - "stakeholder_engagement"
+      - "collaborative_design"
+
+    preferred_chunking:
+      strategy: "semantic"
+      chunk_size: 1200
+      overlap: 150
+      context_window: 2
+
+    source_weights:
+      meeting_records: 1.0
+      informal_discussions: 0.8
+      working_documents: 0.6
+      exploratory_notes: 0.5
+
+  # Learning analyst to track knowledge evolution
+  learning_analyst:
+    name: "Learning Analyst"
+    persona: "You track how organizational understanding evolves over time, identifying patterns in learning, decision evolution, and knowledge development."
+    expertise:
+      - "learning_patterns"
+      - "knowledge_evolution"
+      - "insight_tracking"
+      - "decision_history"
+      - "organizational_memory"
+
+    preferred_chunking:
+      strategy: "semantic"
+      chunk_size: 1000
+      overlap: 200
+      context_window: 4  # Broader context for pattern recognition
+
+    source_weights:
+      exploratory_notes: 0.8
+      informal_discussions: 0.9
+      meeting_records: 0.9
+      working_documents: 0.7
+      formal_decisions: 0.85
+
+# =============================================================================
+# RAG WORKFLOWS FOR GOVERNANCE QUERIES
+# =============================================================================
+
+rag_workflows:
+
+  # Authority-weighted retrieval for policy questions
+  authority_weighted:
+    name: "Authority-Weighted Retrieval"
+    description: "Prioritizes sources by their authority level for policy and governance questions"
+    steps:
+      - type: "vector_search"
+        backend: "vector_store"
+        parameters:
+          top_k: 20
+          use_authority_weights: true  # Key feature
+      - type: "authority_boost"
+        parameters:
+          boost_factor: 2.0  # Double weight for high-authority sources
+          min_authority: 0.6
+      - type: "rerank"
+        model: "cross-encoder/ms-marco-MiniLM-L-6-v2"
+        top_k: 10
+
+  # Temporal evolution tracking
+  temporal_evolution:
+    name: "Temporal Evolution Tracking"
+    description: "Shows how understanding or policy has evolved over time"
+    steps:
+      - type: "vector_search"
+        backend: "vector_store"
+        parameters:
+          top_k: 30
+      - type: "temporal_sort"
+        parameters:
+          group_by: "topic"
+          sort_by: "created_at"
+          show_progression: true
+      - type: "evolution_analysis"
+        parameters:
+          highlight_changes: true
+          identify_pivots: true
+
+  # Governance context search
+  governance_context:
+    name: "Governance Context Search"
+    description: "Traverses entity graph to gather related decisions, meetings, and policies"
+    steps:
+      - type: "entity_graph_expand"
+        backend: "entity_graph"
+        parameters:
+          max_depth: 3
+          relationship_types:
+            - "part_of"
+            - "affects"
+            - "establishes"
+            - "governed_by"
+            - "ratifies"
+          direction: "both"
+      - type: "source_scope"
+        use_entity_ids: true
+      - type: "weighted_vector_search"
+        backend: "vector_store"
+        parameters:
+          top_k: 15
+          scope_to_entity_sources: true
+          use_authority_weights: true
+      - type: "deduplicate"
+      - type: "rerank"
+        top_k: 10
+
+  # Full context for decision-making
+  decision_support:
+    name: "Decision Support Context"
+    description: "Comprehensive context gathering for informed decision-making"
+    steps:
+      - type: "vector_search"
+        backend: "vector_store"
+        parameters:
+          top_k: 15
+          use_authority_weights: true
+      - type: "graph_expansion"
+        backend: "knowledge_graph"
+        parameters:
+          max_depth: 2
+          relationship_types: ["RELATES_TO", "INFORMS", "SUPERSEDES"]
+      - type: "entity_relationships"
+        backend: "entity_graph"
+        parameters:
+          include_decisions: true
+          include_policies: true
+          include_stakeholders: true
+      - type: "temporal_context"
+        parameters:
+          include_history: true
+          time_window: "6 months"
+      - type: "diversify"
+        algorithm: "mmr"
+        lambda: 0.7
+        parameters:
+          ensure_authority_mix: true
+
+# =============================================================================
+# STORAGE BACKENDS
+# =============================================================================
+
+storage_backends:
+
+  # Vector store for semantic search
+  vector_store:
+    type: "vector"
+    implementation: "chromadb"
+    configuration:
+      persist_directory: "{workspace_path}/knowledge/.chromadb"
+      collection_prefix: "collab_org"
+      embedding_model: "sentence-transformers/all-mpnet-base-v2"
+      distance_metric: "cosine"
+
+  # Knowledge graph for content relationships
+  knowledge_graph:
+    type: "graph"
+    role: "knowledge"
+    implementation: "neo4j"
+    configuration:
+      url: "bolt://localhost:7687"
+      username_env: "NEO4J_USERNAME"
+      password_env: "NEO4J_PASSWORD"
+      database: "collab_org_knowledge"
+    schema:
+      node_types:
+        - "Document"
+        - "Chunk"
+        - "Principle"
+        - "Policy"
+        - "Proposal"
+        - "Concept"
+        - "Stakeholder"
+      relationship_types:
+        - "CONTAINS"
+        - "INFORMS"
+        - "SUPERSEDES"
+        - "RATIFIES"
+        - "PROPOSES"
+        - "REFERENCES"
+
+  # Entity graph for operational relationships
+  entity_graph:
+    type: "graph"
+    role: "entity"
+    implementation: "neo4j"
+    configuration:
+      url: "bolt://localhost:7687"
+      username_env: "NEO4J_USERNAME"
+      password_env: "NEO4J_PASSWORD"
+      database: "collab_org_entities"
+    schema:
+      node_label: "Entity"
+      node_properties:
+        - "entity_id"
+        - "entity_type"
+        - "namespace"
+        - "name"
+        - "status"
+        - "authority_level"  # For policies
+        - "ratification_status"  # For decisions
+      relationship_properties:
+        - "relationship_type"
+        - "authority_level"
+        - "ratification_type"
+        - "metadata"
+
+# =============================================================================
+# MONITORING AND GOVERNANCE METRICS
+# =============================================================================
+
+monitoring:
+
+  governance_metrics:
+    - "decision_velocity"  # Decisions per time period
+    - "policy_coverage"    # Domains with established policies
+    - "participation_rate" # Role engagement in meetings
+    - "authority_distribution"  # Who makes what decisions
+    - "knowledge_evolution"  # How fast understanding changes
+    - "consensus_quality"  # Agreement levels in decisions
+
+  alerts:
+
+    stale_domains:
+      threshold: "90 days"
+      condition: "no_meetings_or_decisions"
+      action: "notify_domain_leads"
+
+    unassigned_decisions:
+      condition: "decision_without_affected_roles"
+      action: "flag_for_review"
+
+    authority_conflicts:
+      condition: "overlapping_authority_without_resolution"
+      action: "escalate_to_governance"
+
+# =============================================================================
+# EXAMPLE USAGE SCENARIOS
+# =============================================================================
+
+usage_scenarios:
+
+  # Initial constitution development
+  establish_constitution:
+    description: "Create initial constitutional document"
+    workflow:
+      - create_entity: "constitution"
+      - attach_sources: ["external_standards", "exploratory_notes"]
+      - create_entities: ["domain", "role"]  # Foundational domains and roles
+      - create_decision:
+          name: "Ratify initial constitution"
+          relationship: "ratifies → constitution"
+
+  # Domain exploration and establishment
+  explore_and_establish_domain:
+    description: "Explore a domain and establish it formally"
+    workflow:
+      - create_entity: "domain"
+      - attach_sources: ["exploratory_notes", "working_documents", "external_standards"]
+      - create_conversations: ["multiple informal discussions"]
+      - create_meeting:
+          purpose: "Domain establishment"
+          extract: ["decisions", "roles", "policies"]
+      - create_decision:
+          name: "Establish [domain name]"
+          relationship: "affects → domain"
+
+  # Policy evolution tracking
+  track_policy_evolution:
+    description: "Track how a policy evolved from exploration to ratification"
+    workflow:
+      - query:
+          rag_workflow: "temporal_evolution"
+          focus: "policy topic"
+          source_types: ["exploratory_notes", "informal_discussions", "working_documents", "formal_decisions"]
+      - visualize:
+          type: "timeline"
+          show_authority_progression: true
+
+  # Decision with full context
+  make_informed_decision:
+    description: "Make a decision with comprehensive context"
+    workflow:
+      - query:
+          rag_workflow: "decision_support"
+          context_entity: "current domain"
+      - create_meeting:
+          participants: ["relevant roles"]
+      - create_decision:
+          relationships:
+            - "made_in → meeting"
+            - "affects → [domains/roles]"
+            - "informs ← [artefacts]"
+      - create_policy:
+          if: "decision establishes policy"
+          relationships:
+            - "governed_by → constitution"
+            - "establishes ← decision"
+
+# =============================================================================
+# AUDIT AND TRANSPARENCY
+# =============================================================================
+
+audit_configuration:
+
+  # All state changes logged
+  audit_log:
+    enabled: true
+    capture_fields:
+      - "timestamp"
+      - "actor_id"
+      - "action"
+      - "target_entity"
+      - "changes"
+      - "rationale"
+
+  # Immutable record storage
+  immutable_storage:
+    enabled: true
+    backend: "append_only_log"
+
+  # Public transparency settings
+  public_visibility:
+    enabled: true
+    exclude_types: []  # All entity types visible by default
+    exclude_statuses: ["draft"]  # Only hide drafts
+
+  # Decision provenance tracking
+  provenance:
+    track_full_chain: true
+    include_sources: true
+    include_participants: true
+    include_rationale: true
+    include_dissent: true  # Track minority opinions
+
+# =============================================================================
+# DEVELOPMENT ROADMAP
+# =============================================================================
+
+roadmap:
+
+  phase_1_foundation:
+    - "Establish initial constitution"
+    - "Define core domains"
+    - "Assign foundational roles"
+    - "Set up meeting cadence"
+
+  phase_2_process:
+    - "Develop decision-making process"
+    - "Create policy templates"
+    - "Establish review cycles"
+    - "Build knowledge repository"
+
+  phase_3_scale:
+    - "Enable domain self-governance"
+    - "Distribute authority"
+    - "Cross-domain coordination"
+    - "AI-assisted analysis"
+
+  phase_4_mature:
+    - "Automated reporting"
+    - "Predictive governance"
+    - "Learning organization metrics"
+    - "Continuous improvement loops"

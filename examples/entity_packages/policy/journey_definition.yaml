@@ -1,0 +1,29 @@
+# Policy Development Journey
+
+entity_journey:
+  journey_id: "policy_development"
+  entity_type: "org.collaborative/policy"
+  journey_type: "creation_refinement"
+  description: "Develop and refine organizational policies"
+
+  checkpoint_after_each_stage: true
+  allow_pause_resume: true
+  allow_restart: true
+
+  stages:
+    - name: "draft_policy"
+      type: "human.create"
+      required_fields: ["policy_name", "purpose"]
+
+    - name: "ai_enrich"
+      type: "ai.assist"
+      agent:
+        role: "policy_analyst"
+        persona: "You help develop clear, enforceable policies"
+        expertise: ["policy_design", "compliance", "enforcement"]
+
+    - name: "review_policy"
+      type: "human.review"
+
+    - name: "finalize_policy"
+      type: "system.commit"

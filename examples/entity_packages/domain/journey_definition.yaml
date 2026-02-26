@@ -1,0 +1,415 @@
+# Domain Definition Journey
+# Interactive process to define a new domain with AI assistance
+
+entity_journey:
+  journey_id: "domain_definition"
+  entity_type: "semops.core/domain"
+  journey_type: "creation_refinement"
+  description: "Interactive process to define operational domains with clear boundaries and stakeholders"
+
+  # Journey controls
+  checkpoint_after_each_stage: true
+  allow_pause_resume: true
+  allow_restart: true
+
+  # Journey stages
+  stages:
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # Stage 1: Draft Creation
+    # ──────────────────────────────────────────────────────────────────────────
+    - name: "draft_creation"
+      type: "human.create"
+      description: "User creates initial domain draft with basic information"
+
+      required_fields:
+        - "domain_name"
+
+      optional_fields:
+        - "description"
+        - "purpose"
+
+      outputs:
+        draft_entity: "domain"
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # Stage 2: Scope Clarification
+    # ──────────────────────────────────────────────────────────────────────────
+    - name: "scope_clarification"
+      type: "ai.assist"
+      description: "AI helps define clear boundaries and relationships"
+
+      agent:
+        role: "domain_architect"
+        persona: |
+          You are an organizational architect who helps define clear boundaries
+          and purposes for operational domains. You understand how to avoid
+          overlaps, identify interfaces between domains, and ensure each domain
+          has a coherent scope.
+
+        expertise:
+          - "scope_definition"
+          - "boundary_setting"
+          - "stakeholder_mapping"
+          - "organizational_design"
+
+        model: "claude-3-5-sonnet"
+
+      task: |
+        Analyze this domain draft and propose:
+
+        1. **Clear Scope Definition**
+           - What responsibilities and activities are IN SCOPE
+           - What is explicitly OUT OF SCOPE (belongs elsewhere)
+
+        2. **Related Domains**
+           - Existing domains that might overlap or interact
+           - Suggested interfaces or boundaries between domains
+
+        3. **Key Stakeholders**
+           - Who should have accountability for this domain
+           - Who should be consulted on domain decisions
+
+        4. **Potential Sub-Domains**
+           - Areas within this domain that might warrant their own focus
+
+        5. **Resources**
+           - Types of resources/documents that belong to this domain
+           - Existing entities that should be associated
+
+      inputs:
+        draft: "{outputs.draft_entity}"
+
+      knowledge_context:
+        query: "existing domains, organizational structure, domain patterns, governance"
+        workflow: "authority_weighted"
+        entity_types: ["domain", "role", "constitution", "policy"]
+
+      output_schema:
+        scope_included: "array[string]"
+        scope_excluded: "array[string]"
+        related_domains: "array[string]"
+        stakeholders: "array[object]"
+        sub_domains: "array[string]"
+        resource_types: "array[string]"
+
+      outputs:
+        scope_proposal: "proposal"
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # Stage 3: Review Scope
+    # ──────────────────────────────────────────────────────────────────────────
+    - name: "review_scope"
+      type: "human.review"
+      description: "User reviews and refines AI-proposed scope"
+
+      show:
+        - label: "Original Draft"
+          content: "{outputs.draft_entity}"
+        - label: "AI Proposal"
+          content: "{outputs.scope_proposal}"
+
+      actions:
+        - action: "approve"
+          label: "Accept AI proposal"
+          next_stage: "resource_identification"
+
+        - action: "edit"
+          label: "Edit and refine"
+          allow_edit: true
+          edit_fields:
+            - "scope_included"
+            - "scope_excluded"
+            - "related_domains"
+            - "stakeholders"
+          next_stage: "scope_clarification"  # Loop back with edits
+
+        - action: "reject"
+          label: "Start over"
+          next_stage: "draft_creation"
+
+      outputs:
+        approved_scope: "scope"
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # Stage 4: Resource Identification
+    # ──────────────────────────────────────────────────────────────────────────
+    - name: "resource_identification"
+      type: "ai.assist"
+      description: "AI identifies relevant resources and entities for this domain"
+
+      agent:
+        role: "resource_mapper"
+        persona: |
+          You help identify what resources, documents, and knowledge sources
+          belong to a domain. You understand how to categorize resources and
+          recognize what information is relevant to specific operational areas.
+
+        expertise:
+          - "resource_categorization"
+          - "knowledge_mapping"
+          - "content_discovery"
+
+        model: "claude-3-5-sonnet"
+
+      task: |
+        Given this domain scope, identify:
+
+        1. **Existing Entities** to include in this domain
+           - Meetings that belong to this domain
+           - Decisions that affect this domain
+           - Artefacts produced within this domain
+
+        2. **External Resources** to add as knowledge sources
+           - Documentation
+           - Standards
+           - Reference materials
+
+        3. **Gaps** in current resources
+           - Missing documentation
+           - Undocumented processes
+           - Knowledge that should exist but doesn't
+
+        4. **Organization Structure**
+           - Recommended folder structure
+           - Resource categorization
+
+      inputs:
+        domain_scope: "{outputs.approved_scope}"
+
+      knowledge_context:
+        query: "{outputs.approved_scope.domain_name} resources, related entities"
+        workflow: "semantic_search"
+        entity_types: ["artefact", "meeting", "decision", "conversation"]
+
+      output_schema:
+        existing_entities: "array[object]"
+        external_sources: "array[object]"
+        identified_gaps: "array[string]"
+        organization_structure: "object"
+
+      outputs:
+        resource_suggestions: "suggestions"
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # Stage 5: Review Resources
+    # ──────────────────────────────────────────────────────────────────────────
+    - name: "review_resources"
+      type: "human.review"
+      description: "User selects which resources to include"
+
+      show:
+        - label: "Suggested Entities"
+          content: "{outputs.resource_suggestions.existing_entities}"
+        - label: "Suggested External Sources"
+          content: "{outputs.resource_suggestions.external_sources}"
+        - label: "Identified Gaps"
+          content: "{outputs.resource_suggestions.identified_gaps}"
+
+      actions:
+        - action: "select_resources"
+          label: "Select which to add"
+          multi_select: true
+          selectable_items:
+            - "{outputs.resource_suggestions.existing_entities}"
+            - "{outputs.resource_suggestions.external_sources}"
+          next_stage: "stakeholder_mapping"
+
+        - action: "add_custom"
+          label: "Add custom resources"
+          allow_input: true
+          next_stage: "stakeholder_mapping"
+
+        - action: "skip"
+          label: "Skip for now"
+          next_stage: "stakeholder_mapping"
+
+      outputs:
+        selected_resources: "resources"
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # Stage 6: Stakeholder Mapping
+    # ──────────────────────────────────────────────────────────────────────────
+    - name: "stakeholder_mapping"
+      type: "ai.assist"
+      description: "AI identifies accountability and participation structure"
+
+      agent:
+        role: "stakeholder_analyst"
+        persona: |
+          You identify who should be involved in a domain based on organizational
+          structure, expertise needs, and governance requirements. You understand
+          accountability models and decision-making authority.
+
+        expertise:
+          - "stakeholder_analysis"
+          - "role_mapping"
+          - "accountability_structures"
+          - "governance_design"
+
+        model: "claude-3-5-sonnet"
+
+      task: |
+        Given this domain definition, identify:
+
+        1. **Accountable Roles**
+           - Who has ultimate accountability for this domain
+           - Domain leads or owners
+
+        2. **Consulted Roles**
+           - Who should participate in domain decisions
+           - Whose expertise is needed
+
+        3. **Informed Roles**
+           - Who should be aware of domain changes
+           - Stakeholders affected by domain activities
+
+        4. **Authority Level**
+           - What level of authority this domain requires
+           - Governance requirements
+
+        5. **Decision Process**
+           - How decisions should be made within this domain
+           - Required approvals or consultation
+
+      inputs:
+        domain: "{outputs.approved_scope}"
+        resources: "{outputs.selected_resources}"
+
+      knowledge_context:
+        query: "organizational roles, authority structures, accountability, governance processes"
+        workflow: "authority_weighted"
+        entity_types: ["role", "constitution", "policy"]
+
+      output_schema:
+        accountable_roles: "array[object]"
+        consulted_roles: "array[object]"
+        informed_roles: "array[object]"
+        authority_level: "string"
+        decision_process: "object"
+
+      outputs:
+        stakeholder_map: "map"
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # Stage 7: Review Stakeholders
+    # ──────────────────────────────────────────────────────────────────────────
+    - name: "review_stakeholders"
+      type: "human.review"
+      description: "User approves or adjusts stakeholder assignments"
+
+      show:
+        - label: "Suggested Accountable Roles"
+          content: "{outputs.stakeholder_map.accountable_roles}"
+        - label: "Consulted Roles"
+          content: "{outputs.stakeholder_map.consulted_roles}"
+        - label: "Authority Level"
+          content: "{outputs.stakeholder_map.authority_level}"
+        - label: "Decision Process"
+          content: "{outputs.stakeholder_map.decision_process}"
+
+      actions:
+        - action: "approve"
+          label: "Looks good"
+          next_stage: "finalize_domain"
+
+        - action: "modify"
+          label: "Adjust stakeholders"
+          allow_edit: true
+          edit_fields:
+            - "accountable_roles"
+            - "consulted_roles"
+            - "informed_roles"
+            - "authority_level"
+          next_stage: "finalize_domain"
+
+        - action: "defer"
+          label: "Define stakeholders later"
+          next_stage: "finalize_domain"
+
+      outputs:
+        approved_stakeholders: "stakeholders"
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # Stage 8: Finalize Domain
+    # ──────────────────────────────────────────────────────────────────────────
+    - name: "finalize_domain"
+      type: "system.commit"
+      description: "Create domain entity and establish relationships"
+
+      actions:
+        - action: "create_entity"
+          entity_type: "domain"
+          template_version: "1.0.0"
+          fields:
+            domain_name: "{outputs.approved_scope.domain_name}"
+            purpose: "{outputs.approved_scope.purpose}"
+            scope_included: "{outputs.approved_scope.scope_included}"
+            scope_excluded: "{outputs.approved_scope.scope_excluded}"
+            related_domains: "{outputs.approved_scope.related_domains}"
+            authority_level: "{outputs.approved_stakeholders.authority_level}"
+            primary_stakeholders: "{outputs.approved_stakeholders.accountable_roles}"
+
+        - action: "add_relationships"
+          relationships:
+            - type: "part_of"
+              from: "{outputs.selected_resources.entities}"
+              to: "{entity_id}"
+              description: "Existing entities now part of this domain"
+
+            - type: "accountable_for"
+              from: "{outputs.approved_stakeholders.accountable_roles}"
+              to: "{entity_id}"
+              description: "Roles with accountability for this domain"
+
+            - type: "related_to"
+              from: "{entity_id}"
+              to: "{outputs.approved_scope.related_domains}"
+              description: "Related domains with overlapping concerns"
+
+        - action: "add_knowledge_sources"
+          sources: "{outputs.selected_resources.external_sources}"
+          entity_id: "{entity_id}"
+          source_type: "domain_documentation"
+          authority_weight: 0.8
+
+        - action: "save_journey_state"
+          journey_id: "{journey_id}"
+          entity_id: "{entity_id}"
+          completed_stages: "all"
+          final_state: "{state}"
+
+      outputs:
+        entity_id: "id"
+        journey_complete: true
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Evolution Entry Points (for revisiting later)
+  # ────────────────────────────────────────────────────────────────────────────
+
+  evolution_entry_points:
+
+    - stage: "scope_clarification"
+      trigger: "manual"
+      description: "Revisit domain scope and boundaries"
+      reason_examples:
+        - "Domain responsibilities have changed"
+        - "Overlap with other domains needs resolution"
+        - "Scope was too broad or too narrow"
+
+    - stage: "resource_identification"
+      trigger: "scheduled"
+      schedule: "quarterly"
+      description: "Review domain resources and organization"
+      reason_examples:
+        - "Quarterly domain resource audit"
+        - "New artefacts need to be categorized"
+        - "Resource gaps identified"
+
+    - stage: "stakeholder_mapping"
+      trigger: "manual"
+      description: "Review stakeholder assignments and authority"
+      reason_examples:
+        - "Role changes in organization"
+        - "Authority level needs adjustment"
+        - "New stakeholders need to be added"

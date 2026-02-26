@@ -1,341 +1,383 @@
 # SemOps2 Entity Type Configuration
-# This file defines all entity types and their relationships, structure, and behavior
+#
+# This file defines entity types, their templates/prompts, file layout,
+# validation rules, and the typed relationships between them.
+#
+# NAMESPACE MODEL
+# ---------------
+# Every entity type belongs to a namespace (reverse-DNS convention).
+# Fully-qualified type key: "{namespace}/{type_key}", e.g. "semops.core/decision"
+#
+# Built-in types use "semops.core". Third-party contributions use their own
+# namespace (e.g. "com.acme.governance"). The ConfigManager rejects any
+# non-builtin config that claims "semops.*".
+#
+# ID FORMAT
+# ---------
+# Display ID: "{prefix}-{slug}", e.g. "DEC-adopt-zero-trust"
+# The prefix is unique within its namespace. Two namespaces may use the same
+# prefix without collision because global uniqueness is namespace + slug.
+#
+# TEMPLATE BUNDLES
+# ----------------
+# Each entity type declares a bundle with named template and prompt files.
+# - create:   Jinja2 template for the blank document created on `semops X create`
+# - analyze:  Jinja2 template for AI-generated analysis output
+# - prompts:  Named prompt text files used by the expert system and workflows
+
 
 entity_types:
-  # Root Level: Strategic Domains
+
+  # ── semops.core/domain ───────────────────────────────────────────────────
+  # Bounded operational area. The primary anchor for roles, meetings,
+  # decisions, and cross-domain source sharing.
+
   domain:
-    # Identity Configuration
+    namespace: "semops.core"
     id_prefix: "DOM"
     name_field: "domain_name"
     slug_field: "domain_slug"
 
-    # Template & File Configuration
-    template: "domain.md.j2"
+    template_bundle:
+      create: "domain.md.j2"
+      analyze: "domain-analysis.md.j2"
+      prompts:
+        summarize: "prompts/domain-summarize.txt"
+        identify_roles: "prompts/domain-identify-roles.txt"
+        map_decisions: "prompts/domain-map-decisions.txt"
+
     directory_name: "domain"
-    filename_pattern: "{entity_type}.md"    # → domain.md for context detection
+    filename_pattern: "{entity_type}.md"    # → domain.md
+    nesting_strategy: "root"
 
-    # Hierarchy & Nesting Configuration
     parent_entity: null
-    child_entities: ["problem", "solution", "research"]
-    nesting_strategy: "root"                # Root entity type
-    scoped_to_parent: false
-    context_level: 1
+    child_entities: []                      # Relationships declared in relationship_types below
 
-    # Validation Configuration
     required_fields: ["domain_name", "brief_description"]
     unique_fields: ["domain_name", "domain_slug"]
-
-    # CLI Configuration
-    list_command: true
-    get_command: true
-    create_command: true
-    analyze_command: true
-
-    # Display Configuration
-    display_name: "Domain"
-    description: "Strategic business areas and market segments"
-    icon: "🏢"
-
-  # Level 2: Market Problems
-  problem:
-    id_prefix: "PROB"
-    name_field: "problem_name"
-    slug_field: "problem_slug"
-    template: "problem.md.j2"
-    directory_name: "problems"
-    filename_pattern: "{entity_type}.md"    # → problem.md for context detection
-
-    # Hierarchy & Nesting Configuration
-    parent_entity: "domain"
-    child_entities: ["persona"]
-    nesting_strategy: "nested_directories"  # Creates problems/{slug}/problem.md
-    scoped_to_parent: true                  # Problem must exist within specific domain
-    context_level: 2
-    required_fields: ["problem_name", "domain_id"]
-    unique_fields: ["problem_name"]
-    list_command: true
-    get_command: true
-    create_command: true
-    analyze_command: true
-    display_name: "Problem"
-    description: "Market challenges and opportunities within domains"
-    icon: "🎯"
-
-  # Level 3: User Personas
-  persona:
-    id_prefix: "PERS"
-    name_field: "persona_name"
-    slug_field: "persona_slug"
-    template: "persona.md.j2"
-    directory_name: "personas"
-    filename_pattern: "{entity_type}.md"    # → persona.md for context detection
-
-    # Hierarchy & Nesting Configuration
-    parent_entity: "problem"
-    child_entities: []
-    nesting_strategy: "nested_directories"  # Creates personas/{slug}/persona.md
-    scoped_to_parent: true                  # Persona scoped to specific problem
-    context_level: 3
-    required_fields: ["persona_name", "problem_id"]
-    unique_fields: ["persona_name"]
-    list_command: true
-    get_command: true
-    create_command: true
-    analyze_command: true
-    display_name: "Persona"
-    description: "User archetypes and target audiences"
-    icon: "👤"
-
-  # Level 4: Product Definitions
-  product:
-    id_prefix: "PROD"
-    name_field: "product_name"
-    slug_field: "product_slug"
-    template: "product.md.j2"
-    directory_name: "products"
-    filename_pattern: "{entity_type}.md"    # → product.md for context detection
-
-    # Hierarchy & Nesting Configuration
-    parent_entity: "persona"
-    child_entities: []
-    nesting_strategy: "nested_directories"  # Creates products/{slug}/product.md
-    scoped_to_parent: true                  # Product scoped to specific persona
-    context_level: 4
-    required_fields: ["product_name", "persona_id"]
-    unique_fields: ["product_name"]
-    list_command: true
-    get_command: true
-    create_command: true
-    analyze_command: true
-    display_name: "Product"
-    description: "Solution definitions and product offerings"
-    icon: "📦"
-
-  # Level 2B: Solution Approaches (NEW - parallel to problems)
-  solution:
-    id_prefix: "SOL"
-    name_field: "solution_name"
-    slug_field: "solution_slug"
-    template: "solution.md.j2"
-    directory_name: "solutions"
-    filename_pattern: "{entity_type}.md"    # → solution.md for context detection
-
-    # Hierarchy & Nesting Configuration
-    parent_entity: "domain"                 # Solutions belong to domains, not products
-    child_entities: ["feature"]
-    nesting_strategy: "nested_directories"  # Creates solutions/{slug}/solution.md
-    scoped_to_parent: true                  # Solution scoped to specific domain
-    context_level: 2
-    required_fields: ["solution_name", "domain_id"]
-    unique_fields: ["solution_name"]
-    list_command: true
-    get_command: true
-    create_command: true
-    analyze_command: true
-    display_name: "Solution"
-    description: "Specific implementation approaches and architectures"
-    icon: "💡"
-
-  # Level 3: Feature Definitions (NEW)
-  feature:
-    id_prefix: "FEAT"
-    name_field: "feature_name"
-    slug_field: "feature_slug"
-    template: "feature.md.j2"
-    directory_name: "features"
-    filename_pattern: "{entity_type}.md"    # → feature.md for context detection
-
-    # Hierarchy & Nesting Configuration
-    parent_entity: "solution"
-    child_entities: []
-    nesting_strategy: "nested_directories"  # Creates features/{slug}/feature.md
-    scoped_to_parent: true                  # Feature scoped to specific solution
-    context_level: 3
-    required_fields: ["feature_name", "solution_id"]
-    unique_fields: ["feature_name"]
-    list_command: true
-    get_command: true
-    create_command: true
-    analyze_command: true
-    display_name: "Feature"
-    description: "Specific capabilities and functional components"
-    icon: "⚡"
-
-  # Alternative Hierarchy: Market Segments (NEW)
-  market_segment:
-    id_prefix: "SEG"
-    name_field: "segment_name"
-    slug_field: "segment_slug"
-    template: "market_segment.md.j2"
-    directory_name: "segments"
-    filename_pattern: "{entity_type}.md"    # → market_segment.md for context detection
-
-    # Hierarchy & Nesting Configuration
-    parent_entity: "domain"
-    child_entities: ["persona"]
-    nesting_strategy: "nested_directories"  # Creates segments/{slug}/market_segment.md
-    scoped_to_parent: true                  # Segment scoped to specific domain
-    context_level: 2
-    required_fields: ["segment_name", "domain_id"]
-    unique_fields: ["segment_name"]
-    list_command: true
-    get_command: true
-    create_command: true
-    analyze_command: true
-    display_name: "Market Segment"
-    description: "Specific market categories and customer groups"
-    icon: "🎪"
-
-  # Cross-Cutting: Integration Points (NEW)
-  integration:
-    id_prefix: "INT"
-    name_field: "integration_name"
-    slug_field: "integration_slug"
-    template: "integration.md.j2"
-    directory_name: "integrations"
-    filename_pattern: "{entity_type}.md"    # → integration.md for context detection
-
-    # Hierarchy & Nesting Configuration
-    parent_entity: null                     # Root level - not hierarchical
-    child_entities: []
-    nesting_strategy: "nested_directories"  # Creates integrations/{slug}/integration.md
-    scoped_to_parent: false                 # Cross-cutting entity
     context_level: 1
-    required_fields: ["integration_name", "connected_entities"]
-    unique_fields: ["integration_name"]
-    list_command: true
-    get_command: true
-    create_command: true
-    analyze_command: false  # No AI analysis for integrations
-    display_name: "Integration"
-    description: "System integrations and entity relationships"
-    icon: "🔗"
 
-  # Research Artifacts (NEW)
-  research:
-    id_prefix: "RES"
-    name_field: "research_name"
-    slug_field: "research_slug"
-    template: "research.md.j2"
-    directory_name: "research"
-    filename_pattern: "{entity_type}.md"    # → research.md for context detection
-
-    # Hierarchy & Nesting Configuration
-    parent_entity: "domain"                 # Research belongs to domains
-    child_entities: []
-    nesting_strategy: "nested_directories"  # Creates research/{slug}/research.md
-    scoped_to_parent: true                  # Research scoped to specific domain
-    context_level: 2
-    required_fields: ["research_name", "research_type", "domain_id"]
-    unique_fields: ["research_name"]
     list_command: true
     get_command: true
     create_command: true
     analyze_command: true
-    display_name: "Research"
-    description: "Market research, user studies, and analysis artifacts"
-    icon: "🔬"
+    display_name: "Domain"
+    description: "Bounded operational areas with assigned roles and governance"
 
-  # Strategy Documents (NEW)
-  strategy:
-    id_prefix: "STRAT"
-    name_field: "strategy_name"
-    slug_field: "strategy_slug"
-    template: "strategy.md.j2"
-    directory_name: "strategies"
+  # ── semops.core/role ─────────────────────────────────────────────────────
+  # A person or group with defined accountability. Flat root collection;
+  # roles connect to domains and meetings via relationships.
+
+  role:
+    namespace: "semops.core"
+    id_prefix: "ROLE"
+    name_field: "role_name"
+    slug_field: "role_slug"
+
+    template_bundle:
+      create: "role.md.j2"
+      prompts:
+        responsibilities: "prompts/role-responsibilities.txt"
+        stakeholder_map: "prompts/role-stakeholder-map.txt"
+
+    directory_name: "roles"
     filename_pattern: "{entity_type}.md"
-    parent_entity: "domain"
-    child_entities: ["initiative"]
-    context_level: 2
-    required_fields: ["strategy_name", "strategic_focus", "domain_id"]
-    unique_fields: ["strategy_name"]
-    list_command: true
-    get_command: true
-    create_command: true
-    analyze_command: true
-    display_name: "Strategy"
-    description: "Strategic initiatives and business strategies"
-    icon: "📈"
+    nesting_strategy: "root"
 
-  # Strategic Initiatives (NEW)
-  initiative:
-    id_prefix: "INIT"
-    name_field: "initiative_name"
-    slug_field: "initiative_slug"
-    template: "initiative.md.j2"
-    directory_name: "initiatives"
-    filename_pattern: "{entity_type}.md"
-    parent_entity: "strategy"
+    parent_entity: null
     child_entities: []
-    context_level: 3
-    required_fields: ["initiative_name", "strategy_id"]
-    unique_fields: ["initiative_name"]
+
+    required_fields: ["role_name"]
+    unique_fields: ["role_name", "role_slug"]
+    context_level: 1
+
+    list_command: true
+    get_command: true
+    create_command: true
+    analyze_command: false
+    display_name: "Role"
+    description: "Accountable or responsible parties within domains and decisions"
+
+  # ── semops.core/meeting ───────────────────────────────────────────────────
+  # A recorded session that produces decisions, artefacts, and action items.
+
+  meeting:
+    namespace: "semops.core"
+    id_prefix: "MTG"
+    name_field: "meeting_name"
+    slug_field: "meeting_slug"
+
+    template_bundle:
+      create: "meeting.md.j2"
+      analyze: "meeting-analysis.md.j2"
+      prompts:
+        extract_decisions: "prompts/meeting-extract-decisions.txt"
+        extract_actions: "prompts/meeting-extract-actions.txt"
+        extract_artefacts: "prompts/meeting-extract-artefacts.txt"
+        summarize: "prompts/meeting-summarize.txt"
+
+    directory_name: "meetings"
+    filename_pattern: "{entity_type}.md"
+    nesting_strategy: "root"
+
+    parent_entity: null
+    child_entities: []
+
+    required_fields: ["meeting_name", "meeting_date"]
+    unique_fields: ["meeting_slug"]
+    context_level: 1
+
     list_command: true
     get_command: true
     create_command: true
     analyze_command: true
-    display_name: "Initiative"
-    description: "Specific strategic initiatives and action plans"
-    icon: "🚀"
+    display_name: "Meeting"
+    description: "Recorded sessions that produce decisions, artefacts, and action items"
 
-# Global Configuration
+  # ── semops.core/decision ──────────────────────────────────────────────────
+  # A recorded decision with rationale, status, and affected domains/roles.
+
+  decision:
+    namespace: "semops.core"
+    id_prefix: "DEC"
+    name_field: "decision_name"
+    slug_field: "decision_slug"
+
+    template_bundle:
+      create: "decision.md.j2"
+      analyze: "decision-analysis.md.j2"
+      prompts:
+        summarize: "prompts/decision-summarize.txt"
+        extract_rationale: "prompts/decision-rationale.txt"
+        relate_to_domain: "prompts/decision-relate-domain.txt"
+        assess_impact: "prompts/decision-impact.txt"
+
+    directory_name: "decisions"
+    filename_pattern: "{entity_type}.md"
+    nesting_strategy: "root"
+
+    parent_entity: null
+    child_entities: []
+
+    required_fields: ["decision_name", "decision_date", "status"]
+    unique_fields: ["decision_slug"]
+    context_level: 1
+
+    list_command: true
+    get_command: true
+    create_command: true
+    analyze_command: true
+    display_name: "Decision"
+    description: "Recorded decisions with rationale, status, and affected domains"
+
+  # ── semops.core/conversation ──────────────────────────────────────────────
+  # An informal or async exchange (Slack thread, email chain, etc.) that may
+  # produce artefacts or feed into a decision.
+
+  conversation:
+    namespace: "semops.core"
+    id_prefix: "CONV"
+    name_field: "conversation_name"
+    slug_field: "conversation_slug"
+
+    template_bundle:
+      create: "conversation.md.j2"
+      prompts:
+        extract_actions: "prompts/conversation-extract-actions.txt"
+        extract_artefacts: "prompts/conversation-extract-artefacts.txt"
+        summarize: "prompts/conversation-summarize.txt"
+
+    directory_name: "conversations"
+    filename_pattern: "{entity_type}.md"
+    nesting_strategy: "root"
+
+    parent_entity: null
+    child_entities: []
+
+    required_fields: ["conversation_name"]
+    unique_fields: ["conversation_slug"]
+    context_level: 1
+
+    list_command: true
+    get_command: true
+    create_command: true
+    analyze_command: true
+    display_name: "Conversation"
+    description: "Informal or async exchanges that may produce artefacts or feed into decisions"
+
+  # ── semops.core/artefact ──────────────────────────────────────────────────
+  # A document, diagram, or other output produced by a meeting or conversation.
+
+  artefact:
+    namespace: "semops.core"
+    id_prefix: "ART"
+    name_field: "artefact_name"
+    slug_field: "artefact_slug"
+
+    template_bundle:
+      create: "artefact.md.j2"
+      prompts:
+        summarize: "prompts/artefact-summarize.txt"
+        classify: "prompts/artefact-classify.txt"
+
+    directory_name: "artefacts"
+    filename_pattern: "{entity_type}.md"
+    nesting_strategy: "root"
+
+    parent_entity: null
+    child_entities: []
+
+    required_fields: ["artefact_name", "artefact_type"]
+    unique_fields: ["artefact_slug"]
+    context_level: 1
+
+    list_command: true
+    get_command: true
+    create_command: true
+    analyze_command: false
+    display_name: "Artefact"
+    description: "Documents, diagrams, or other outputs produced by meetings or conversations"
+
+
+# ── Relationship Types ────────────────────────────────────────────────────────
+#
+# Typed, directed relationships between entity instances. These replace the
+# old child_entities/parent_entity tree model for graph-style connections.
+#
+# Fields:
+#   namespace       - Reverse-DNS namespace owning this relationship type
+#   from_types      - Fully-qualified entity types that may appear as "from"
+#   to_types        - Fully-qualified entity types that may appear as "to"
+#   cardinality     - many_to_one | many_to_many | one_to_one
+#   required        - Whether this relationship is required on the from entity
+#   share_sources   - Whether knowledge sources propagate across this edge
+#   max_depth       - Maximum hops for source propagation (prevents runaway unions)
+#   metadata_schema - Optional per-relationship-instance fields
+
+relationship_types:
+
+  # A decision was made during a specific meeting
+  made_in:
+    namespace: "semops.core"
+    from_types: ["semops.core/decision"]
+    to_types: ["semops.core/meeting"]
+    cardinality: many_to_one
+    required: false
+    share_sources: false
+
+  # A decision, meeting, or role belongs to a domain (soft membership)
+  part_of:
+    namespace: "semops.core"
+    from_types:
+      - "semops.core/role"
+      - "semops.core/meeting"
+      - "semops.core/decision"
+      - "semops.core/conversation"
+    to_types: ["semops.core/domain"]
+    cardinality: many_to_many
+    required: false
+    share_sources: true           # Domain sources propagate to members
+    max_depth: 1
+
+  # A decision affects one or more domains or roles
+  affects:
+    namespace: "semops.core"
+    from_types: ["semops.core/decision"]
+    to_types: ["semops.core/domain", "semops.core/role"]
+    cardinality: many_to_many
+    required: false
+    share_sources: false
+
+  # A role participates in a meeting or conversation
+  participates_in:
+    namespace: "semops.core"
+    from_types: ["semops.core/role"]
+    to_types: ["semops.core/meeting", "semops.core/conversation"]
+    cardinality: many_to_many
+    required: false
+    share_sources: false
+    metadata_schema:
+      - field: capacity           # e.g. "chair", "contributor", "observer"
+        type: string
+        required: false
+
+  # A meeting or conversation produces an artefact
+  produces:
+    namespace: "semops.core"
+    from_types: ["semops.core/meeting", "semops.core/conversation"]
+    to_types: ["semops.core/artefact"]
+    cardinality: many_to_many
+    required: false
+    share_sources: true           # Artefacts inherit sources from their producing session
+
+  # An entity references an existing artefact (read-only link, no source sharing)
+  references:
+    namespace: "semops.core"
+    from_types:
+      - "semops.core/meeting"
+      - "semops.core/conversation"
+      - "semops.core/decision"
+    to_types: ["semops.core/artefact"]
+    cardinality: many_to_many
+    required: false
+    share_sources: false
+
+  # A domain depends on another domain (cross-domain knowledge sharing)
+  depends_on:
+    namespace: "semops.core"
+    from_types: ["semops.core/domain"]
+    to_types: ["semops.core/domain"]
+    cardinality: many_to_many
+    required: false
+    share_sources: true
+    max_depth: 1
+
+
+# ── Global Configuration ──────────────────────────────────────────────────────
+
 configuration:
-  # Template Processing
   template_engine:
     auto_escape: true
     strict_variables: true
     trim_blocks: true
     lstrip_blocks: true
 
-  # Validation Settings
   validation:
     enforce_unique_constraints: true
     validate_parent_relationships: true
     require_templates: true
     validate_frontmatter: true
 
-  # Context Detection
   context_detection:
-    max_parent_search_depth: 10
+    max_parent_search_depth: 5     # Flat collections don't need deep search
     auto_resolve_ambiguity: true
-    prefer_deeper_context: true
+    prefer_deeper_context: false   # All collections are at depth 1
 
-  # CLI Settings
   cli:
     auto_generate_help: true
     consistent_parameter_names: true
     context_aware_defaults: true
     format_options: ["table", "json", "yaml", "markdown"]
 
-# Template Variable Mapping
-# Defines how entity configuration maps to template variables
+  # Namespace access control
+  # Only the built-in loader may register types under "semops.*".
+  # Third-party configs that claim protected namespaces are rejected.
+  protected_namespaces:
+    - "semops.*"
+
+
+# ── Template Variables ────────────────────────────────────────────────────────
+# Standard variables available in every template regardless of entity type.
+
 template_variables:
-  # Standard variables available in all templates
   global:
-    - entity_type
-    - entity_id
+    - entity_type           # Fully-qualified: "semops.core/decision"
+    - entity_namespace      # "semops.core"
+    - entity_type_key       # Short key: "decision"
+    - entity_id             # Display ID: "DEC-adopt-zero-trust"
     - entity_name
     - entity_slug
-    - parent_id
-    - template_id
+    - template_name
     - template_version
     - creation_date
     - last_modified
-
-  # Entity-specific variable patterns
-  entity_specific:
-    domain:
-      - domain_id
-      - domain_name
-      - domain_slug
-    problem:
-      - problem_id
-      - problem_name
-      - problem_slug
-      - domain_id
-    persona:
-      - persona_id
-      - persona_name
-      - persona_slug
-      - problem_id
-    # ... continues for all entity types

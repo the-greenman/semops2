@@ -71,44 +71,52 @@ file_id = "domain/vmware_modernisation" # File system uses underscores
 
 ### Master Entity ID Definition
 
+The `EntityID` message uses a **namespace model** to support third-party entity type contributions without ID collisions. Two different packages can both define a `decision` type because each lives under a distinct namespace.
+
 ```protobuf
-// semops/schema/v1/core.proto
+// schema/semops/v1/core.proto
 syntax = "proto3";
 package semops.v1;
 
-import "validate/validate.proto";
+import "buf/validate/validate.proto";
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/struct.proto";
 
 // Standardized EntityID - enforces format everywhere
 message EntityID {
-  // Primary identifier with strict format validation (kebab-case)
-  string id = 1 [(validate.rules).string.pattern = "^[A-Z]{2,5}-[a-z0-9-]+$"];
+  // Reverse-DNS namespace owning this type, e.g. "semops.core" or "com.acme"
+  string namespace = 1;
 
-  // Entity type for routing and validation
-  string entity_type = 2 [(validate.rules).string = {
-    in: ["domain", "problem", "persona", "product", "solution", "feature", "research"]
-  }];
+  // Short prefix, unique within the namespace, e.g. "DEC"
+  string prefix = 2 [(buf.validate.field).string.pattern = "^[A-Z]{2,6}$"];
+
+  // Fully-qualified type key: "{namespace}/{type_key}", e.g. "semops.core/decision"
+  // NOT a closed enum — valid values are determined by the loaded configuration.
+  string entity_type = 3 [(buf.validate.field).string.min_len = 1];
 
   // URL-safe slug for file system and web usage (kebab-case)
-  string slug = 3 [(validate.rules).string.pattern = "^[a-z0-9-]+$"];
+  string slug = 4 [(buf.validate.field).string.pattern = "^[a-z0-9-]+$"];
 
-  // Domain path context for file operations
-  string domain_path = 4;
+  // Computed display ID: "{prefix}-{slug}", e.g. "DEC-budget-2026"
+  // Unique within a namespace. Globally unique when combined with namespace.
+  string id = 5;
+
+  // File-system context path
+  string domain_path = 6;
 }
 
-// Base entity structure - all semantic entities inherit this
-message Entity {
+// Base entity structure
+message EntityMeta {
   EntityID entity_id = 1;
-  string name = 2 [(validate.rules).string.min_len = 1];
+  string name = 2 [(buf.validate.field).string.min_len = 1];
   string description = 3;
   google.protobuf.Struct metadata = 4;
   google.protobuf.Timestamp created_at = 5;
   google.protobuf.Timestamp updated_at = 6;
-  EntityID parent_id = 7; // Optional parent relationship
-  repeated string tags = 8;
-  EntityStatus status = 9;
-  string template_version = 10;
+  repeated string tags = 7;
+  EntityStatus status = 8;
+  string template_version = 9;
+  float weight = 10 [(buf.validate.field).float = {gte: 0.0, lte: 1.0}];
 }
 
 enum EntityStatus {
@@ -116,90 +124,69 @@ enum EntityStatus {
   ENTITY_STATUS_DRAFT = 1;
   ENTITY_STATUS_ACTIVE = 2;
   ENTITY_STATUS_ARCHIVED = 3;
+  ENTITY_STATUS_DELETED = 4;
 }
 ```
 
-### Specific Entity Definitions
+**Why not a closed enum for `entity_type`?** Protobuf enums are schema-level constructs that require a schema change and regeneration to add a new value. Since entity types are defined in YAML configuration and must be extensible by third parties without modifying the schema, `entity_type` carries the fully-qualified string key (`semops.core/decision`) and validation against valid types happens in the `ConfigManager` at runtime, not in the protobuf layer.
+
+### Entity Document (File-Based View)
+
+Rather than defining message types per entity (which would require a schema change for every new entity type), SemOps2 uses a single generic `EntityDocument` that represents the file-based view of any entity. Entity-specific fields live in `frontmatter` as a free-form `Struct`.
 
 ```protobuf
-// semops/schema/v1/entities.proto
+// schema/semops/v1/entities.proto
 syntax = "proto3";
 package semops.v1;
 
-import "semops/schema/v1/core.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+import "semops/v1/core.proto";
 
-// Domain entity with specific fields
-message Domain {
-  Entity base = 1;
-  string focus_areas = 2;
-  string boundaries_in_scope = 3;
-  string boundaries_out_of_scope = 4;
-  repeated string domain_tensions = 5;
-  string key_stakeholders = 6;
-  string strategic_context = 7;
-}
+// Generic file-based entity representation.
+// Works for any entity type (domain, decision, meeting, role, artefact, etc.)
+// without requiring schema changes when new types are introduced.
+message EntityDocument {
+  // Fully-qualified entity ID including namespace
+  EntityID entity_id = 1;
 
-// Problem entity with domain relationship
-message Problem {
-  Entity base = 1;
-  EntityID domain_id = 2; // Required parent relationship
-  string core_problem_summary = 3;
-  string trigger_event = 4;
-  string current_state = 5;
-  string contextual_stakes = 6;
-  repeated ProblemPolarity polarities = 7;
-  string scope_in_scope = 8;
-  string scope_out_of_scope = 9;
-}
+  // Parsed YAML frontmatter — entity-specific fields live here
+  google.protobuf.Struct frontmatter = 2;
 
-message ProblemPolarity {
-  string name = 1;
-  string side_a = 2;
-  string side_b = 3;
-  string description_a = 4;
-  string description_b = 5;
-}
+  // Markdown content body
+  string content = 3;
 
-// Persona entity with problem relationship
-message Persona {
-  Entity base = 1;
-  EntityID problem_id = 2; // Required parent relationship
-  string role = 3;
-  string authority_level = 4;
-  string decision_influence = 5;
-  repeated string pain_points = 6;
-  repeated string goals = 7;
-  string organizational_context = 8;
+  // File system metadata
+  string file_path = 4;
+  google.protobuf.Timestamp file_modified_at = 5;
+
+  // Which template bundle entry was used to create this document
+  string template_name = 6;
+  string template_version = 7;
 }
 ```
 
 ### Expert System Schema
 
+Expert types are **configuration-driven**, not a closed protobuf enum. The `expert_type` field carries a string key that maps to an entry in `experts.yaml`. This follows the same extensibility principle as `entity_type`: new expert personas are added via config, not schema changes.
+
 ```protobuf
-// semops/schema/v1/experts.proto
+// schema/semops/v1/experts.proto (planned)
 syntax = "proto3";
 package semops.v1;
 
-import "semops/schema/v1/core.proto";
+import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+import "semops/v1/core.proto";
 
-// Expert type definitions
-enum ExpertType {
-  EXPERT_TYPE_UNSPECIFIED = 0;
-  EXPERT_TYPE_STRATEGIC_ANALYST = 1;
-  EXPERT_TYPE_PRODUCT_STRATEGIST = 2;
-  EXPERT_TYPE_UX_RESEARCHER = 3;
-  EXPERT_TYPE_TECHNICAL_ARCHITECT = 4;
-  EXPERT_TYPE_MARKET_RESEARCHER = 5;
-  EXPERT_TYPE_BUSINESS_DEVELOPMENT = 6;
-}
-
-// Expert analysis request
+// Expert analysis request.
+// expert_type is a config-defined string key, e.g. "operations-analyst" or "governance-reviewer".
+// workflow is a config-defined string key, e.g. "basic_analysis" or "decision-rationale-review".
 message ExpertAnalysisRequest {
   EntityID entity_id = 1;
-  ExpertType expert_type = 2;
-  string workflow = 3 [(validate.rules).string = {
-    in: ["basic_analysis", "comprehensive_analysis", "multi_expert_workflow"]
-  }];
+  string expert_type = 2 [(buf.validate.field).string.min_len = 1];
+  string workflow = 3;
   google.protobuf.Struct parameters = 4;
   bool auto_save = 5;
 }
@@ -207,7 +194,7 @@ message ExpertAnalysisRequest {
 // Expert analysis response
 message ExpertAnalysisResponse {
   string analysis_id = 1;
-  ExpertType expert_type = 2;
+  string expert_type = 2;
   EntityID entity_id = 3;
   string analysis_content = 4;
   float confidence_score = 5;
@@ -430,16 +417,18 @@ plugins:
 **Python gRPC Client:**
 ```python
 # Generated: src/semops/generated/services_pb2_grpc.py
-from semops.generated import entities_pb2, services_pb2_grpc
+from semops.generated import core_pb2, services_pb2, services_pb2_grpc
 
 # Type-safe client with validation
 client = services_pb2_grpc.EntityServiceStub(channel)
 
-# Consistent ID format enforced
-entity_id = entities_pb2.EntityID(
-    id="DOM-cloud-security",  # Regex validated
-    entity_type="domain",
-    slug="cloud-security"
+# Namespace-scoped EntityID
+entity_id = core_pb2.EntityID(
+    namespace="semops.core",
+    prefix="DEC",
+    entity_type="semops.core/decision",
+    slug="adopt-zero-trust-model",
+    id="DEC-adopt-zero-trust-model",
 )
 
 request = services_pb2.GetEntityRequest(entity_id=entity_id)
@@ -461,9 +450,10 @@ paths:
       parameters:
         - name: entity_type
           in: query
+          description: "Fully-qualified type key, e.g. 'semops.core/decision'"
           schema:
             type: string
-            enum: [domain, problem, persona, product]
+            minLength: 1
       responses:
         '200':
           description: List of entities
@@ -476,17 +466,24 @@ components:
   schemas:
     EntityID:  # Generated from protobuf
       type: object
-      required: [id, entity_type, slug]
+      required: [namespace, prefix, entity_type, slug, id]
       properties:
-        id:
+        namespace:
           type: string
-          pattern: '^[A-Z]{2,5}-[a-z0-9-]+$'
+          description: "Reverse-DNS namespace, e.g. 'semops.core' or 'com.acme'"
+        prefix:
+          type: string
+          pattern: '^[A-Z]{2,6}$'
         entity_type:
           type: string
-          enum: [domain, problem, persona, product]
+          description: "Fully-qualified type key: '{namespace}/{type_key}'"
+          minLength: 1
         slug:
           type: string
           pattern: '^[a-z0-9-]+$'
+        id:
+          type: string
+          description: "Display ID: '{prefix}-{slug}', e.g. 'DEC-budget-2026'"
 ```
 
 **GraphQL Schema:**
@@ -525,30 +522,30 @@ type Query {
 ```
 
 **MCP Tool Definitions:**
+
+MCP tool schemas are generated from the protobuf service definitions. Because `entity_type` and `expert_type` are open strings (not closed enums), the generated schemas use `minLength` constraints rather than `enum` lists. Valid values come from the runtime config, exposed via `semops_list_entity_types` and `semops_list_expert_types` tools.
+
 ```python
 # Generated: src/semops/generated/mcp/tools.py
-from typing import Dict, Any, List
-from mcp.server import Server
-from mcp.types import Tool, TextContent
-from semops.generated import entities_pb2, services_pb2_grpc
-
-# Auto-generated MCP tools from protobuf service definitions
 SEMOPS_TOOLS = [
     Tool(
         name="semops_list_entities",
-        description="List entities of a specific type with optional parent filtering",
+        description="List entities of a specific type with optional relationship filtering",
         inputSchema={
             "type": "object",
             "properties": {
                 "entity_type": {
                     "type": "string",
-                    "enum": ["domain", "problem", "persona", "product", "solution", "feature", "research"],
-                    "description": "Type of entity to list"
+                    "minLength": 1,
+                    "description": "Fully-qualified type key, e.g. 'semops.core/decision'"
                 },
-                "parent_id": {
+                "related_to": {
                     "type": "string",
-                    "pattern": "^[A-Z]{2,5}-[A-Za-z0-9]+$",
-                    "description": "Optional parent entity ID to filter by"
+                    "description": "Optional: filter to entities related to this ID"
+                },
+                "relationship_type": {
+                    "type": "string",
+                    "description": "Optional: relationship type to filter by, e.g. 'semops.core/made_in'"
                 }
             },
             "required": ["entity_type"]
@@ -556,14 +553,17 @@ SEMOPS_TOOLS = [
     ),
     Tool(
         name="semops_get_entity",
-        description="Get specific entity by ID with full content",
+        description="Get a specific entity by its display ID",
         inputSchema={
             "type": "object",
             "properties": {
                 "entity_id": {
                     "type": "string",
-                    "pattern": "^[A-Z]{2,5}-[A-Za-z0-9]+$",
-                    "description": "Entity ID in format PREFIX-Name"
+                    "description": "Display ID, e.g. 'DEC-adopt-zero-trust'"
+                },
+                "namespace": {
+                    "type": "string",
+                    "description": "Namespace to disambiguate if multiple types share the same prefix"
                 }
             },
             "required": ["entity_id"]
@@ -571,103 +571,53 @@ SEMOPS_TOOLS = [
     ),
     Tool(
         name="semops_create_entity",
-        description="Create new entity from template with provided variables",
+        description="Create a new entity from its template bundle",
         inputSchema={
             "type": "object",
             "properties": {
                 "entity_type": {
                     "type": "string",
-                    "enum": ["domain", "problem", "persona", "product"],
-                    "description": "Type of entity to create"
+                    "minLength": 1,
+                    "description": "Fully-qualified type key, e.g. 'semops.core/meeting'"
                 },
+                "name": {"type": "string"},
                 "variables": {
                     "type": "object",
-                    "description": "Template variables for entity creation"
+                    "description": "Template variables for the create template"
                 }
             },
-            "required": ["entity_type", "variables"]
+            "required": ["entity_type", "name"]
         }
     ),
     Tool(
         name="semops_analyze_entity",
-        description="Generate expert analysis for entity using AI agents",
+        description="Run an expert prompt against an entity",
         inputSchema={
             "type": "object",
             "properties": {
-                "entity_id": {
-                    "type": "string",
-                    "pattern": "^[A-Z]{2,5}-[A-Za-z0-9]+$",
-                    "description": "Entity ID to analyze"
-                },
+                "entity_id": {"type": "string"},
                 "expert_type": {
                     "type": "string",
-                    "enum": ["strategic_analyst", "product_strategist", "ux_researcher", "technical_architect"],
-                    "description": "Type of expert analysis to perform"
+                    "description": "Config-defined expert key, e.g. 'operations-analyst'"
                 },
                 "workflow": {
                     "type": "string",
-                    "enum": ["basic_analysis", "comprehensive_analysis", "multi_expert_workflow"],
-                    "description": "Analysis workflow to execute"
+                    "description": "Config-defined workflow key"
                 }
             },
             "required": ["entity_id"]
         }
     ),
     Tool(
-        name="semops_search_knowledge",
-        description="Search knowledge repository using RAG workflows",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "query": {
-                    "type": "string",
-                    "minLength": 1,
-                    "description": "Search query"
-                },
-                "context_entity_id": {
-                    "type": "string",
-                    "pattern": "^[A-Z]{2,5}-[A-Za-z0-9]+$",
-                    "description": "Optional context entity for scoped search"
-                },
-                "workflow": {
-                    "type": "string",
-                    "enum": ["basic_semantic", "hybrid_search", "graph_enhanced", "multimodal_search"],
-                    "description": "RAG workflow to use"
-                },
-                "max_results": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "maximum": 100,
-                    "description": "Maximum number of results to return"
-                }
-            },
-            "required": ["query"]
-        }
+        name="semops_list_entity_types",
+        description="List all configured entity types with their namespaces and prefixes",
+        inputSchema={"type": "object", "properties": {}}
     ),
     Tool(
-        name="semops_add_knowledge_source",
-        description="Add and process knowledge source for domain",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "source_type": {
-                    "type": "string",
-                    "enum": ["web_content", "documents", "api_feeds", "code_repos", "media_content"],
-                    "description": "Type of knowledge source"
-                },
-                "source_config": {
-                    "type": "object",
-                    "description": "Source-specific configuration (URL, credentials, etc.)"
-                },
-                "domain_id": {
-                    "type": "string",
-                    "pattern": "^[A-Z]{2,5}-[A-Za-z0-9]+$",
-                    "description": "Domain to associate source with"
-                }
-            },
-            "required": ["source_type", "source_config", "domain_id"]
-        }
-    )
+        name="semops_list_relationship_types",
+        description="List all configured relationship types",
+        inputSchema={"type": "object", "properties": {}}
+    ),
 ]
 
 # Auto-generated async handlers wrapping protobuf services
@@ -902,11 +852,11 @@ if __name__ == "__main__":
 
 ### **1. Perfect ID Format Consistency**
 ```bash
-# Same EntityID structure everywhere:
-semops domain get DOM-cloud-security        # CLI
-GET /api/v1/entities/DOM-cloud-security     # REST
-query { entity(id: "DOM-cloud-security") }  # GraphQL
-mcp_tool("get_entity", {"id": "DOM-cloud-security"})  # MCP
+# Same EntityID structure everywhere, namespace-qualified:
+semops decision get DEC-adopt-zero-trust                              # CLI
+GET /api/v1/entities/DEC-adopt-zero-trust?ns=semops.core             # REST
+query { entity(id: "DEC-adopt-zero-trust", ns: "semops.core") }      # GraphQL
+mcp_tool("semops_get_entity", {"entity_id": "DEC-adopt-zero-trust"}) # MCP
 ```
 
 ### **2. Type Safety Across All Interfaces**

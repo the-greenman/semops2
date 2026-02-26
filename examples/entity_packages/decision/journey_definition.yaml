@@ -1,0 +1,471 @@
+# Decision Refinement Journey
+# Interactive process to refine decisions from discussion content
+
+entity_journey:
+  journey_id: "decision_refinement"
+  entity_type: "semops.core/decision"
+  journey_type: "extraction_refinement"
+  description: "Extract and refine decisions from meeting or conversation content"
+
+  # Special: This journey operates on SOURCE content (meeting/conversation)
+  # and produces MULTIPLE decision entities
+  source_entity_types: ["meeting", "conversation"]
+  produces_multiple_entities: true
+
+  # Journey controls
+  checkpoint_after_each_stage: true
+  allow_pause_resume: true
+  allow_restart: true
+
+  # Journey stages
+  stages:
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # Stage 1: Identify Potential Decisions
+    # ──────────────────────────────────────────────────────────────────────────
+    - name: "load_source_content"
+      type: "system.load"
+      description: "Load meeting or conversation content"
+
+      inputs:
+        source_entity_id: "required"
+
+      actions:
+        - action: "load_entity"
+          entity_id: "{inputs.source_entity_id}"
+          include_content: true
+          include_related: true
+
+      outputs:
+        source_content: "content"
+        source_type: "entity_type"
+        source_entity: "entity"
+
+    - name: "identify_decisions"
+      type: "ai.assist"
+      description: "Scan content for potential decisions"
+
+      agent:
+        role: "decision_identifier"
+        persona: |
+          You are an expert at identifying decisions being made in discussions.
+          You can distinguish between actual decisions (commitments to action)
+          and exploratory discussions. You recognize when multiple decisions
+          are intertwined and need separation.
+
+        expertise:
+          - "decision_detection"
+          - "context_extraction"
+          - "ambiguity_assessment"
+          - "stakeholder_identification"
+
+        model: "claude-3-5-sonnet"
+
+      task: |
+        Analyze this {outputs.source_type} content and identify all potential
+        decisions being made or discussed.
+
+        For each potential decision:
+        1. Extract the decision statement (what is being decided)
+        2. Identify who is involved in making it
+        3. Note the context and rationale mentioned
+        4. Assess clarity (clear, unclear, ambiguous)
+        5. Flag if multiple decisions are intertwined
+
+      inputs:
+        content: "{outputs.source_content}"
+        entity: "{outputs.source_entity}"
+
+      output_schema:
+        potential_decisions:
+          type: "array"
+          items:
+            decision_statement: "string"
+            involved_roles: "array[string]"
+            context: "string"
+            rationale: "string"
+            clarity_level: "clear | unclear | ambiguous"
+            intertwined: "boolean"
+            supporting_quotes: "array[string]"
+
+      outputs:
+        potential_decisions: "decisions"
+        decision_count: "count"
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # Stage 2: Review Identified Decisions
+    # ──────────────────────────────────────────────────────────────────────────
+    - name: "review_identified_decisions"
+      type: "human.review"
+      description: "User confirms, merges, splits, or rejects identified decisions"
+
+      show:
+        - label: "Source"
+          content: "{outputs.source_entity.name}"
+        - label: "Identified Decisions ({outputs.decision_count})"
+          content: "{outputs.potential_decisions}"
+
+      actions:
+        - action: "confirm"
+          label: "Confirm decision"
+          applies_to: "each_item"
+
+        - action: "merge"
+          label: "Merge with another"
+          applies_to: "multiple_items"
+
+        - action: "split"
+          label: "Split into separate decisions"
+          applies_to: "single_item"
+
+        - action: "reject"
+          label: "Not a decision"
+          applies_to: "each_item"
+
+        - action: "clarify"
+          label: "Needs clarification"
+          applies_to: "each_item"
+          next_stage: "clarify_decision"
+
+      outputs:
+        confirmed_decisions: "confirmed"
+        needs_clarification: "to_clarify"
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # Stage 3: Clarify Decision (For Each Decision Needing Clarification)
+    # ──────────────────────────────────────────────────────────────────────────
+    - name: "clarify_decision"
+      type: "ai.assist"
+      description: "AI helps clarify decision statement, scope, and outcomes"
+      iterate_over: "{outputs.needs_clarification}"
+
+      agent:
+        role: "decision_clarifier"
+        persona: |
+          You refine decision statements to be clear, actionable, and unambiguous.
+          You understand how to define scope, identify assumptions, and articulate
+          desired outcomes.
+
+        expertise:
+          - "statement_refinement"
+          - "scope_definition"
+          - "assumption_extraction"
+          - "outcome_articulation"
+
+        model: "claude-3-5-sonnet"
+
+      task: |
+        Given this potential decision, create a clear, unambiguous decision statement.
+
+        Original: {current_item.decision_statement}
+        Context: {current_item.context}
+        Rationale: {current_item.rationale}
+
+        Produce:
+        1. A clear decision statement (one sentence, action-oriented)
+        2. The scope of the decision (what's included, what's not)
+        3. The desired outcome
+        4. Any assumptions being made
+
+      output_schema:
+        decision_statement: "string"
+        scope_included: "array[string]"
+        scope_excluded: "array[string]"
+        desired_outcome: "string"
+        assumptions: "array[string]"
+
+      outputs:
+        clarified_statement: "result"
+
+    - name: "review_clarified_statement"
+      type: "human.review"
+      description: "User reviews and approves clarified decision"
+      iterate_over: "{outputs.clarified_statement}"
+
+      show:
+        - label: "Original"
+          content: "{current_item.original}"
+        - label: "Clarified"
+          content: "{current_item.clarified}"
+
+      actions:
+        - action: "approve"
+          label: "Approve as-is"
+          next_stage: "explore_options"
+
+        - action: "edit"
+          label: "Edit and approve"
+          allow_edit: true
+          next_stage: "explore_options"
+
+        - action: "reject"
+          label: "Too unclear - skip this decision"
+          next_stage: "next_decision"
+
+      outputs:
+        approved_statement: "statement"
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # Stage 4: Explore Options
+    # ──────────────────────────────────────────────────────────────────────────
+    - name: "explore_options"
+      type: "ai.assist"
+      description: "AI identifies and analyzes decision options"
+      iterate_over: "{outputs.approved_statement}"
+
+      agent:
+        role: "options_explorer"
+        persona: |
+          You identify all viable options for a decision and analyze their
+          trade-offs. You understand risk assessment and comparative analysis.
+
+        expertise:
+          - "option_generation"
+          - "comparative_analysis"
+          - "risk_assessment"
+          - "trade-off_evaluation"
+
+        model: "claude-3-5-sonnet"
+
+      task: |
+        For this decision, identify all viable options that have been
+        discussed or should be considered.
+
+        Decision: {current_item.decision_statement}
+        Context: {current_item.context}
+
+        For each option:
+        1. Description of the option
+        2. Pros and cons
+        3. Resource requirements
+        4. Risks
+        5. Dependencies
+
+      knowledge_context:
+        query: "similar past decisions, relevant policies, standards"
+        workflow: "authority_weighted"
+        entity_types: ["decision", "policy"]
+
+      outputs:
+        identified_options: "options"
+
+    - name: "review_options"
+      type: "human.review"
+      description: "User reviews and selects or adds options"
+      iterate_over: "{outputs.identified_options}"
+
+      show:
+        - label: "Decision"
+          content: "{current_item.decision_statement}"
+        - label: "Options"
+          content: "{current_item.options}"
+
+      actions:
+        - action: "add_option"
+          label: "Add another option"
+          allow_input: true
+
+        - action: "remove_option"
+          label: "Remove an option"
+
+        - action: "approve"
+          label: "Options are complete"
+          next_stage: "identify_stakeholders"
+
+      outputs:
+        final_options: "options"
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # Stage 5: Identify Stakeholders and Process
+    # ──────────────────────────────────────────────────────────────────────────
+    - name: "identify_stakeholders"
+      type: "ai.assist"
+      description: "AI identifies decision makers, advisors, and affected parties"
+      iterate_over: "{outputs.final_options}"
+
+      agent:
+        role: "stakeholder_mapper"
+        persona: |
+          You identify who should make decisions, who should be consulted,
+          and who will be affected. You understand governance structures and
+          authority delegation.
+
+        expertise:
+          - "stakeholder_analysis"
+          - "authority_mapping"
+          - "governance_design"
+
+        model: "claude-3-5-sonnet"
+
+      task: |
+        Given this decision and its options, identify:
+        1. Who needs to make this decision (decision makers)
+        2. Who should be consulted (advisors)
+        3. Who will be affected (stakeholders to inform)
+        4. What decision process should be used (based on constitution)
+
+      inputs:
+        decision: "{current_item.decision_statement}"
+        options: "{current_item.options}"
+
+      knowledge_context:
+        query: "decision-making processes, authority levels, governance"
+        workflow: "authority_weighted"
+        entity_types: ["constitution", "policy", "role"]
+
+      output_schema:
+        decision_makers: "array[object]"
+        advisors: "array[object]"
+        affected_stakeholders: "array[object]"
+        recommended_process: "object"
+        decision_type: "string"
+
+      outputs:
+        stakeholder_map: "map"
+
+    - name: "review_stakeholders"
+      type: "human.review"
+      description: "User approves stakeholder assignments"
+      iterate_over: "{outputs.stakeholder_map}"
+
+      show:
+        - label: "Decision Makers"
+          content: "{current_item.decision_makers}"
+        - label: "Advisors"
+          content: "{current_item.advisors}"
+        - label: "Process"
+          content: "{current_item.recommended_process}"
+
+      actions:
+        - action: "approve"
+          label: "Looks good"
+          next_stage: "assess_readiness"
+
+        - action: "modify"
+          label: "Adjust assignments"
+          allow_edit: true
+          next_stage: "assess_readiness"
+
+      outputs:
+        approved_stakeholders: "stakeholders"
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # Stage 6: Assess Readiness
+    # ──────────────────────────────────────────────────────────────────────────
+    - name: "assess_readiness"
+      type: "human.review"
+      description: "User decides if decision is ready or should be marked as draft"
+      iterate_over: "{outputs.approved_stakeholders}"
+
+      show:
+        - label: "Decision Statement"
+          content: "{current_item.decision_statement}"
+        - label: "Options"
+          content: "{current_item.options}"
+        - label: "Stakeholders"
+          content: "{current_item.stakeholders}"
+
+      actions:
+        - action: "ready"
+          label: "Ready to proceed"
+          next_stage: "create_decision_entity"
+          set_status: "ready"
+
+        - action: "draft"
+          label: "Mark as draft"
+          next_stage: "create_decision_entity"
+          set_status: "draft"
+
+        - action: "defer"
+          label: "Not ready - skip for now"
+          next_stage: "next_decision"
+
+      outputs:
+        decision_status: "status"
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # Stage 7: Create Decision Entity
+    # ──────────────────────────────────────────────────────────────────────────
+    - name: "create_decision_entity"
+      type: "system.commit"
+      description: "Create decision entity with all gathered information"
+      iterate_over: "{outputs.decision_status}"
+
+      actions:
+        - action: "create_entity"
+          entity_type: "decision"
+          template_version: "1.0.0"
+          fields:
+            decision_name: "{current_item.decision_statement}"
+            decision_statement: "{current_item.decision_statement}"
+            scope_included: "{current_item.scope_included}"
+            scope_excluded: "{current_item.scope_excluded}"
+            desired_outcome: "{current_item.desired_outcome}"
+            assumptions: "{current_item.assumptions}"
+            options_considered: "{current_item.options}"
+            decision_makers: "{current_item.stakeholders.decision_makers}"
+            advisors: "{current_item.stakeholders.advisors}"
+            affected_stakeholders: "{current_item.stakeholders.affected_stakeholders}"
+            decision_type: "{current_item.decision_type}"
+            decision_process: "{current_item.recommended_process}"
+            status: "{current_item.status}"
+
+        - action: "add_relationships"
+          relationships:
+            - type: "made_in"
+              from: "{entity_id}"
+              to: "{inputs.source_entity_id}"
+              description: "Decision made in this {outputs.source_type}"
+
+        - action: "save_journey_state"
+          journey_id: "{journey_id}"
+          entity_id: "{entity_id}"
+          source_entity: "{inputs.source_entity_id}"
+          completed_stages: "all"
+
+      outputs:
+        created_entity_id: "id"
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # Stage 8: Continue or Complete
+    # ──────────────────────────────────────────────────────────────────────────
+    - name: "next_decision"
+      type: "system.branch"
+      description: "Check if more decisions to process"
+
+      condition: "has_more_items"
+      if_true: "clarify_decision"  # Loop back for next decision
+      if_false: "journey_complete"
+
+    - name: "journey_complete"
+      type: "system.commit"
+      description: "Finalize journey and update source entity"
+
+      actions:
+        - action: "update_entity"
+          entity_id: "{inputs.source_entity_id}"
+          fields:
+            decision_refinement_state: "completed"
+            decisions_created: "{outputs.created_entity_ids}"
+
+      outputs:
+        journey_complete: true
+        entities_created: "{outputs.created_entity_ids}"
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Evolution Entry Points
+  # ────────────────────────────────────────────────────────────────────────────
+
+  evolution_entry_points:
+
+    - stage: "clarify_decision"
+      trigger: "manual"
+      description: "Revisit decision statement and scope"
+
+    - stage: "explore_options"
+      trigger: "manual"
+      description: "Reconsider options and alternatives"
+
+    - stage: "identify_stakeholders"
+      trigger: "manual"
+      description: "Update stakeholder assignments"

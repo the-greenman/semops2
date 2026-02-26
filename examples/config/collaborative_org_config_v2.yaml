@@ -1,0 +1,542 @@
+# SemOps2 Configuration for Collaborative Organization Governance
+#
+# This configuration uses modular entity packages for:
+# - Transparent operational records for humans and AI
+# - Domain exploration with resource collection
+# - Discussion recording and transcription
+# - Decision-making with evolving policy
+# - Role assignment and accountability
+# - Authority-weighted knowledge sources
+
+# =============================================================================
+# WORKSPACE CONFIGURATION
+# =============================================================================
+
+workspace:
+  name: "collaborative-organization"
+  description: "Building capacity for effective group cooperation"
+  root_path: "/workspace/org"
+
+  # Template versioning (workspace-wide)
+  template_version: "1.0.0"
+
+# =============================================================================
+# ENTITY PACKAGE IMPORTS
+# =============================================================================
+#
+# Entity packages contain: entity_definition.yaml, journey_definition.yaml,
+# migration_rules.yaml, and templates/
+#
+# Packages are loaded from the entity_packages_path directory
+
+entity_packages_path: "../entity_packages"
+
+entity_packages:
+  # Core operational entities with interactive journeys
+  - package: "domain"
+    journey_enabled: true
+
+  - package: "decision"
+    journey_enabled: true
+
+  # Governance entities
+  - package: "policy"
+    namespace: "org.collaborative"
+    journey_enabled: true
+
+  - package: "constitution"
+    namespace: "org.collaborative"
+    journey_enabled: true
+
+  # Built-in entity types (role, meeting, conversation, artefact)
+  # are available by default and don't need to be listed here
+
+# =============================================================================
+# RELATIONSHIP TYPES FOR GOVERNANCE
+# =============================================================================
+#
+# Built-in relationship types (semops.core namespace):
+#   - made_in: decision → meeting
+#   - part_of: decision/meeting/role → domain
+#   - affects: decision → domain/role
+#   - participates_in: role → meeting/conversation
+#   - produces: meeting/conversation → artefact
+#   - references: meeting/conversation/decision → artefact
+#   - depends_on: domain → domain
+#
+# Custom relationships for governance model:
+
+relationship_types:
+
+  # A decision establishes a policy
+  establishes:
+    namespace: "org.collaborative"
+    from_types: ["semops.core/decision"]
+    to_types: ["org.collaborative/policy"]
+    cardinality: one_to_one
+    required: false
+    share_sources: true  # Policy inherits decision's knowledge sources
+    max_depth: 1
+
+  # A policy is governed by the constitution
+  governed_by:
+    namespace: "org.collaborative"
+    from_types: ["org.collaborative/policy"]
+    to_types: ["org.collaborative/constitution"]
+    cardinality: many_to_one
+    required: true
+    share_sources: true  # Policy inherits constitutional authority
+    max_depth: 1
+
+  # A policy supersedes an older policy
+  supersedes:
+    namespace: "org.collaborative"
+    from_types: ["org.collaborative/policy"]
+    to_types: ["org.collaborative/policy"]
+    cardinality: one_to_many
+    required: false
+    share_sources: false
+    max_depth: 2  # Track supersession chain
+
+  # A decision ratifies/approves another entity (policy, role, domain)
+  ratifies:
+    namespace: "org.collaborative"
+    from_types: ["semops.core/decision"]
+    to_types: ["org.collaborative/policy", "semops.core/role", "semops.core/domain"]
+    cardinality: many_to_many
+    required: false
+    share_sources: false
+    metadata_schema:
+      - field: ratification_type
+        type: string
+        required: true
+        enum: ["approval", "amendment", "ratification"]
+      - field: vote_count
+        type: object
+        required: false
+
+  # A role holds authority over a domain
+  holds_authority:
+    namespace: "org.collaborative"
+    from_types: ["semops.core/role"]
+    to_types: ["semops.core/domain"]
+    cardinality: many_to_many
+    required: false
+    share_sources: false
+    metadata_schema:
+      - field: authority_type
+        type: string
+        required: true
+        enum: ["accountable", "consulted", "informed"]
+
+  # An artefact informs a decision or policy
+  informs:
+    namespace: "org.collaborative"
+    from_types: ["semops.core/artefact"]
+    to_types: ["semops.core/decision", "org.collaborative/policy"]
+    cardinality: many_to_many
+    required: false
+    share_sources: true  # Decision can use artefact as knowledge source
+
+# =============================================================================
+# SOURCE TYPES WITH AUTHORITY WEIGHTS
+# =============================================================================
+#
+# Different content types have different authority levels for knowledge retrieval
+# Authority weight ranges from 0.0 (lowest) to 1.0 (highest)
+
+source_types:
+
+  # Highest authority: Constitutional documents
+  constitutional_documents:
+    name: "Constitutional Documents"
+    description: "Foundational governing documents and principles"
+    icon: "⚖️"
+
+    pipeline:
+      extractor: "file_extractor"
+      processor: "markdown_processor"
+      chunking:
+        strategy: "semantic"
+        chunk_size: 2000
+        overlap: 300
+        preserve_structure: true
+      enrichers: ["principle_enricher", "governance_enricher"]
+
+    storage:
+      primary: "vector_store"
+      secondary: ["knowledge_graph"]
+
+    protocols: ["file"]
+
+    options:
+      authority_weight: 1.0  # HIGHEST AUTHORITY
+      immutable: true
+      version_controlled: true
+
+  # High authority: Formal decisions
+  formal_decisions:
+    name: "Formal Decisions"
+    description: "Ratified decisions made through formal process"
+    icon: "✅"
+
+    pipeline:
+      extractor: "file_extractor"
+      processor: "decision_processor"
+      chunking:
+        strategy: "semantic"
+        chunk_size: 1500
+        overlap: 200
+      enrichers: ["decision_enricher", "stakeholder_enricher"]
+
+    storage:
+      primary: "vector_store"
+      secondary: ["knowledge_graph"]
+
+    protocols: ["file"]
+
+    options:
+      authority_weight: 0.95  # HIGH AUTHORITY
+      track_supersession: true
+      link_to_policies: true
+
+  # Medium-high authority: Meeting records
+  meeting_records:
+    name: "Meeting Records"
+    description: "Documented discussions, transcriptions, and meeting notes"
+    icon: "📝"
+
+    pipeline:
+      extractor: "file_extractor"
+      processor: "markdown_processor"
+      chunking:
+        strategy: "recursive"
+        chunk_size: 1000
+        overlap: 150
+        separators: ["\n## ", "\n### ", "\n- "]
+      enrichers: ["topic_enricher", "participant_enricher"]
+
+    storage:
+      primary: "vector_store"
+      secondary: ["knowledge_graph"]
+
+    protocols: ["file"]
+
+    options:
+      authority_weight: 0.75  # MEDIUM-HIGH AUTHORITY
+      extract_decisions: true
+      link_to_participants: true
+
+  # Medium authority: Working documents
+  working_documents:
+    name: "Working Documents"
+    description: "Draft policies, proposals, work-in-progress documents"
+    icon: "📄"
+
+    pipeline:
+      extractor: "file_extractor"
+      processor: "markdown_processor"
+      chunking:
+        strategy: "recursive"
+        chunk_size: 1000
+        overlap: 150
+      enrichers: ["topic_enricher"]
+
+    storage:
+      primary: "vector_store"
+      secondary: []
+
+    protocols: ["file"]
+
+    options:
+      authority_weight: 0.5  # MEDIUM AUTHORITY
+      mark_as_draft: true
+      track_versions: true
+
+  # Medium-low authority: Informal discussions
+  informal_discussions:
+    name: "Informal Discussions"
+    description: "Slack threads, async conversations, casual exchanges"
+    icon: "💬"
+
+    pipeline:
+      extractor: "text_extractor"
+      processor: "conversation_processor"
+      chunking:
+        strategy: "recursive"
+        chunk_size: 800
+        overlap: 100
+      enrichers: ["topic_enricher"]
+
+    storage:
+      primary: "vector_store"
+      secondary: []
+
+    protocols: ["file", "slack", "email"]
+
+    options:
+      authority_weight: 0.4  # MEDIUM-LOW AUTHORITY
+      extract_key_insights: true
+      identify_action_items: true
+
+  # Low authority: Exploratory notes
+  exploratory_notes:
+    name: "Exploratory Notes"
+    description: "Brainstorming, exploration, and early-stage thinking"
+    icon: "💭"
+
+    pipeline:
+      extractor: "file_extractor"
+      processor: "text_cleaner"
+      chunking:
+        strategy: "recursive"
+        chunk_size: 600
+        overlap: 100
+        separators: ["\n\n", "\n- ", ". "]
+      enrichers: ["topic_enricher", "question_enricher"]
+
+    storage:
+      primary: "vector_store"
+      secondary: []
+
+    protocols: ["file"]
+
+    options:
+      authority_weight: 0.2  # LOW AUTHORITY
+      tag_as_exploratory: true
+      link_to_formal_outputs: true
+
+  # High authority: External standards
+  external_standards:
+    name: "External Standards and References"
+    description: "Industry standards, regulatory frameworks, external research"
+    icon: "🌐"
+
+    pipeline:
+      extractor: "beautifulsoup_extractor"
+      processor: "markdown_converter"
+      chunking:
+        strategy: "recursive"
+        chunk_size: 1200
+        overlap: 150
+        preserve_structure: true
+      enrichers: ["metadata_enricher", "citation_enricher", "authority_enricher"]
+
+    storage:
+      primary: "vector_store"
+      secondary: ["knowledge_graph"]
+
+    protocols: ["https"]
+
+    options:
+      authority_weight: 0.8  # HIGH AUTHORITY (external standards)
+      validate_sources: true
+      check_currency: true
+
+# =============================================================================
+# RAG WORKFLOWS
+# =============================================================================
+#
+# Different retrieval strategies for different use cases
+
+rag_workflows:
+
+  # Primary workflow: Authority-weighted search
+  authority_weighted:
+    description: "Prioritize authoritative sources in retrieval (default for AI agents)"
+
+    retrieval_strategy: "hybrid"  # Vector + graph traversal
+    k: 10  # Retrieve top 10 chunks
+
+    # Apply authority weights to sources
+    source_weights:
+      constitutional_documents: 1.0
+      formal_decisions: 0.95
+      meeting_records: 0.75
+      working_documents: 0.5
+      informal_discussions: 0.4
+      exploratory_notes: 0.2
+      external_standards: 0.8
+
+    # Post-processing pipeline
+    post_processing:
+      - action: "apply_authority_weights"
+        method: "multiply_similarity_score"  # final_score = similarity * authority_weight
+
+      - action: "sort_by_weighted_score"
+        order: "descending"
+
+      - action: "add_authority_label"
+        labels:
+          "≥0.9": "AUTHORITATIVE"
+          "≥0.7": "FORMAL"
+          "≥0.5": "DOCUMENTED"
+          "<0.5": "EXPLORATORY"
+
+      - action: "group_by_entity"
+        max_chunks_per_entity: 3
+
+    # Context building for AI
+    context_format: |
+      {authority_label} {source_type}: {chunk_text}
+      (Source: {entity_id}, Confidence: {weighted_score:.2f})
+
+  # Secondary workflow: Semantic search (no authority weighting)
+  semantic_search:
+    description: "Pure semantic similarity search without authority bias"
+
+    retrieval_strategy: "vector"
+    k: 10
+
+    post_processing:
+      - action: "sort_by_similarity"
+      - action: "group_by_entity"
+        max_chunks_per_entity: 3
+
+  # Tertiary workflow: Entity graph traversal
+  entity_graph_traversal:
+    description: "Find related entities through graph relationships"
+
+    retrieval_strategy: "graph"
+    max_depth: 3  # Traverse up to 3 hops
+
+    relationship_weights:
+      governed_by: 1.0  # Strongest relevance
+      establishes: 0.9
+      ratifies: 0.8
+      part_of: 0.7
+      made_in: 0.6
+      related_to: 0.5
+
+    post_processing:
+      - action: "sort_by_path_weight"
+      - action: "include_relationship_context"
+
+# =============================================================================
+# STORAGE BACKENDS
+# =============================================================================
+
+storage:
+
+  # Entity graph: Operational entities and relationships
+  entity_graph:
+    backend: "neo4j"
+    role: "entity_graph"  # Tag for identification
+    connection:
+      uri: "bolt://localhost:7687"
+      auth:
+        username: "neo4j"
+        password: "${NEO4J_PASSWORD}"  # From environment
+    options:
+      database: "entity_graph"
+      create_if_missing: true
+
+  # Knowledge graph: Semantic content and concepts
+  knowledge_graph:
+    backend: "neo4j"
+    role: "knowledge_graph"  # Tag for identification
+    connection:
+      uri: "bolt://localhost:7687"
+      auth:
+        username: "neo4j"
+        password: "${NEO4J_PASSWORD}"
+    options:
+      database: "knowledge_graph"
+      create_if_missing: true
+
+  # Vector store: Embeddings for semantic search
+  vector_store:
+    backend: "chromadb"
+    role: "vector_store"
+    connection:
+      path: "/workspace/org/.semops/chromadb"
+    options:
+      collection_name: "collaborative_org_knowledge"
+      embedding_model: "text-embedding-3-small"
+      distance_metric: "cosine"
+
+# =============================================================================
+# MIGRATION CONFIGURATION
+# =============================================================================
+
+migration:
+  # Manual trigger (decision: A from audit)
+  auto_run: false
+  auto_check_on_startup: true  # Alert if entities need migration
+
+  # Backup configuration
+  backup:
+    enabled: true
+    location: ".semops/backups/migrations"
+    retention_days: 90
+    include_relationships: true
+    include_knowledge_sources: true
+
+  # Default strategy (can be overridden per-entity-type)
+  default_strategy: "llm_assisted_with_review"
+
+  # LLM configuration for assisted migrations
+  llm:
+    model: "claude-3-5-sonnet"
+    temperature: 0.1  # Low temperature for consistency
+    max_tokens: 4000
+
+# =============================================================================
+# JOURNEY CONFIGURATION
+# =============================================================================
+
+journeys:
+  # Checkpoint configuration (decision: C from audit - both LangGraph and entity metadata)
+  checkpointing:
+    enabled: true
+    langgraph_backend: "sqlite"
+    langgraph_path: ".semops/checkpoints/langgraph.db"
+    save_to_entity_metadata: true  # Also save to entity for audit trail
+
+  # Allow pause/resume for all journeys
+  allow_pause_resume: true
+
+  # CLI interaction settings
+  cli:
+    interactive_mode: true
+    show_ai_reasoning: false  # Set to true for debugging
+    confirm_before_commit: true
+
+# =============================================================================
+# EXPERT CONFIGURATION FOR JOURNEYS
+# =============================================================================
+#
+# Note: Experts are now defined inline in journey_definition.yaml files
+# as contextual agents, not as separate expert_types.
+#
+# This section configures shared expert settings.
+
+expert:
+  # Default model for all AI agents (can be overridden per-agent)
+  default_model: "claude-3-5-sonnet"
+
+  # Temperature for different agent types
+  temperature:
+    analyst: 0.3  # Lower temperature for analysis
+    generator: 0.7  # Higher temperature for creative tasks
+
+  # Knowledge context defaults
+  knowledge_context:
+    default_workflow: "authority_weighted"
+    max_chunks: 10
+    include_entity_metadata: true
+
+# =============================================================================
+# LOGGING AND MONITORING
+# =============================================================================
+
+logging:
+  level: "INFO"
+  file: ".semops/logs/semops.log"
+  rotation: "daily"
+  retention_days: 30
+
+monitoring:
+  track_journey_performance: true
+  track_migration_success_rate: true
+  track_authority_weight_usage: true

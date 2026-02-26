@@ -1,0 +1,98 @@
+# Domain Analysis: {{domain_name}}
+
+## Executive Summary
+
+{{executive_summary}}
+
+## Scope Analysis
+
+### Clarity Assessment
+- **Scope Definition**: {{scope_clarity | default("To be assessed")}}
+- **Boundary Clarity**: {{boundary_clarity | default("To be assessed")}}
+
+### Overlap Analysis
+{% if overlapping_domains and overlapping_domains | length > 0 %}
+**Potential overlaps detected:**
+{% for overlap in overlapping_domains %}
+- **{{overlap.domain}}**: {{overlap.description}}
+  - *Resolution*: {{overlap.suggested_resolution}}
+{% endfor %}
+{% else %}
+No significant overlaps detected with existing domains.
+{% endif %}
+
+## Stakeholder Analysis
+
+### Coverage Assessment
+{{stakeholder_coverage | default("Stakeholders to be mapped")}}
+
+### Accountability Clarity
+{{accountability_clarity | default("Accountability structure to be defined")}}
+
+## Resource Completeness
+
+### Current State
+{% if resource_completeness %}
+- **Documentation**: {{resource_completeness.documentation | default("Incomplete")}}
+- **Processes**: {{resource_completeness.processes | default("Incomplete")}}
+- **Decision History**: {{resource_completeness.decisions | default("Incomplete")}}
+{% else %}
+_Resource assessment pending_
+{% endif %}
+
+### Gaps Identified
+{% if identified_gaps and identified_gaps | length > 0 %}
+{% for gap in identified_gaps %}
+- **{{gap.category}}**: {{gap.description}}
+  - *Priority*: {{gap.priority}}
+  - *Suggested Action*: {{gap.action}}
+{% endfor %}
+{% else %}
+_No gaps identified at this time_
+{% endif %}
+
+## Health Indicators
+
+| Indicator | Status | Notes |
+|-----------|--------|-------|
+| Scope Clarity | {{health.scope_clarity | default("⚠️  Needs Definition")}} | {{health.scope_notes | default("")}} |
+| Stakeholder Engagement | {{health.stakeholder_engagement | default("⚠️  To Be Assessed")}} | {{health.stakeholder_notes | default("")}} |
+| Resource Completeness | {{health.resource_completeness | default("⚠️  Incomplete")}} | {{health.resource_notes | default("")}} |
+| Authority Alignment | {{health.authority_alignment | default("⚠️  To Be Validated")}} | {{health.authority_notes | default("")}} |
+
+## Recommendations
+
+{% if recommendations and recommendations | length > 0 %}
+{% for rec in recommendations %}
+### {{rec.title}}
+**Priority**: {{rec.priority}}
+
+{{rec.description}}
+
+**Suggested Actions:**
+{% for action in rec.actions %}
+- {{action}}
+{% endfor %}
+{% endfor %}
+{% else %}
+_Recommendations to be generated after domain definition journey completes_
+{% endif %}
+
+## Next Steps
+
+{% if next_steps and next_steps | length > 0 %}
+{% for step in next_steps %}
+{{loop.index}}. {{step}}
+{% endfor %}
+{% else %}
+1. Complete domain definition journey
+2. Assign stakeholders
+3. Identify and add resources
+4. Define decision-making process
+{% endif %}
+
+---
+
+**Analysis Date**: {{analysis_date | default("{{now}}")}}
+**Analyzed By**: {{analyzed_by | default("Expert System")}}
+**Template Version**: {{template_version | default("1.0.0")}}

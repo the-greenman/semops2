@@ -1,0 +1,57 @@
+# Domain Entity Type Definition
+# Part of the collaborative organization entity package set
+
+entity_type:
+  type_key: "domain"
+  namespace: "semops.core"
+  id_prefix: "DOM"
+  name_field: "domain_name"
+  slug_field: "domain_slug"
+
+  display_name: "Domain"
+  description: "Bounded operational areas with specific responsibilities and resources"
+
+  # Template configuration
+  template_bundle:
+    create: "create.md.j2"
+    analyze: "analyze.md.j2"
+    prompts:
+      identify_scope: "prompts/identify-scope.txt"
+      map_stakeholders: "prompts/map-stakeholders.txt"
+      suggest_resources: "prompts/suggest-resources.txt"
+
+  # Template version for this package
+  template_version: "1.0.0"
+
+  # File organization
+  directory_name: "domains"
+  filename_pattern: "{entity_type}.md"
+  nesting_strategy: "root"
+
+  # Entity relationships
+  parent_entity: null
+  child_entities: []
+
+  # Field requirements
+  required_fields:
+    - "domain_name"
+    - "purpose"
+    - "authority_level"
+
+  optional_fields:
+    - "scope_included"
+    - "scope_excluded"
+    - "related_domains"
+    - "primary_stakeholders"
+
+  unique_fields:
+    - "domain_slug"
+
+  # Context and discoverability
+  context_level: 1
+
+  # CLI commands
+  list_command: true
+  get_command: true
+  create_command: true
+  analyze_command: true

@@ -11,6 +11,8 @@ SemOps2 reimagines the semantic operations platform with a generic, configuratio
 3. **Coupling** - Tight coupling between entity types and implementation code
 4. **Duplication** - Same patterns repeated across different entity services
 5. **Scalability** - Adding new entity types requires significant code changes
+6. **Product-Management Bias** - Domain/Problem/Persona hierarchy is only suited to product discovery; operations use cases (meetings, decisions, roles, artefacts) don't fit a strict parent-child tree
+7. **No Third-Party Extensibility** - Short unprefixed ID prefixes (`DOM`, `PROB`) collide when multiple contributors define the same entity concept; there is no namespace to distinguish them
 
 ## SemOps2 Core Principles
 
@@ -72,7 +74,7 @@ To decouple the `semops2` tool from the knowledge bases it manages, configuratio
 The `ConfigManager` loads configuration in the following order, with later layers overriding earlier ones:
 
 1.  **Built-in Defaults** - Embedded in the tool itself
-    *   Core entity types (domain, problem, persona, product)
+    *   Core entity types under `semops.core` namespace (domain, role, meeting, decision, conversation, artefact)
     *   Default source types and processing pipelines
     *   Standard expert types and workflows
     *   Basic storage backend configurations
@@ -246,102 +248,291 @@ knowledge-base-project/
 
 ## Entity Type Configuration Schema
 
+### Namespace Model
+
+Every entity type is owned by a **namespace** using reverse-DNS convention. This is the primary mechanism for safe third-party extensibility: two contributors can both define a `decision` type without collision because they live in different namespaces.
+
+```
+semops.core         Built-in types shipped with SemOps2
+com.acme            Third-party contribution from Acme
+io.myorg.hr         Sub-namespaced contribution
+```
+
+The fully-qualified type key is `{namespace}/{type_key}`, e.g. `semops.core/decision`. Within a single namespace the `id_prefix` must be unique. Across namespaces the same prefix is permitted — global ID uniqueness comes from the namespace, not the prefix alone.
+
+The `ConfigManager` enforces that only the built-in loader may register types under `semops.*`. Project and third-party configs that claim `semops.*` namespaces are rejected at load time.
+
+### Type Registry and Conflict Detection
+
+The `ConfigManager` builds a type registry keyed on the fully-qualified type key. When loading multiple configuration layers:
+
+- Types in later layers **extend** the registry, they do not silently override
+- A conflict (same fully-qualified key from two different sources) raises a hard error at startup
+- The `semops config validate` command reports any conflicts before runtime
+
+### Entity Type Definition
+
 ```yaml
-# config/entity_types.yaml
+# .semops/config/entity_types.yaml
 entity_types:
+
+  # ── Core ops entity types (namespace: semops.core) ──────────────────────
+
   domain:
-    # Identity
+    namespace: "semops.core"
     id_prefix: "DOM"
     name_field: "domain_name"
     slug_field: "domain_slug"
 
-    # Template & Structure
-    template: "domain.md.j2"
+    # Template bundle
+    template_bundle:
+      create: "domain.md.j2"
+      analyze: "domain-analysis.md.j2"
+      prompts:
+        summarize: "prompts/domain-summarize.txt"
+        identify_roles: "prompts/domain-identify-roles.txt"
+
+    # File layout
     directory_name: "domain"
     filename_pattern: "{entity_type}.md"    # → domain.md for context detection
+    nesting_strategy: "root"
 
-    # Hierarchy & Nesting
+    # Hierarchy — null parent means root collection
     parent_entity: null
-    child_entities: ["problem", "solution"]
-    nesting_strategy: "root"                # Root entity
-    scoped_to_parent: false
-    context_level: 1
+    child_entities: []                      # Ops entities relate via relationship_types, not nesting
 
     # Validation
     required_fields: ["domain_name", "brief_description"]
     unique_fields: ["domain_name", "domain_slug"]
+    context_level: 1
 
-    # CLI Configuration
+    # CLI
     list_command: true
     get_command: true
     create_command: true
     analyze_command: true
+    display_name: "Domain"
+    description: "Bounded operational areas with assigned roles and governance"
 
-  problem:
-    id_prefix: "PROB"
-    name_field: "problem_name"
-    slug_field: "problem_slug"
-    template: "problem.md.j2"
-    directory_name: "problems"
-    filename_pattern: "{entity_type}.md"    # → problem.md for context detection
-
-    # Hierarchy & Nesting
-    parent_entity: "domain"
-    child_entities: ["persona"]
-    nesting_strategy: "nested_directories"  # Creates problems/{slug}/problem.md
-    scoped_to_parent: true                  # Must exist within specific domain
-    context_level: 2
-    required_fields: ["problem_name", "domain_id"]
-
-  persona:
-    id_prefix: "PERS"
-    name_field: "persona_name"
-    slug_field: "persona_slug"
-    template: "persona.md.j2"
-    directory_name: "personas"
-    filename_pattern: "{entity_type}.md"    # → persona.md for context detection
-
-    # Hierarchy & Nesting
-    parent_entity: "problem"
+  role:
+    namespace: "semops.core"
+    id_prefix: "ROLE"
+    name_field: "role_name"
+    slug_field: "role_slug"
+    template_bundle:
+      create: "role.md.j2"
+      prompts:
+        responsibilities: "prompts/role-responsibilities.txt"
+    directory_name: "roles"
+    filename_pattern: "{entity_type}.md"
+    nesting_strategy: "root"                # Flat root collection — roles are cross-cutting
+    parent_entity: null
     child_entities: []
-    nesting_strategy: "nested_directories"  # Creates personas/{slug}/persona.md
-    scoped_to_parent: true                  # Persona for specific problem
-    context_level: 3
-    required_fields: ["persona_name", "problem_id"]
+    required_fields: ["role_name"]
+    context_level: 1
+    list_command: true
+    get_command: true
+    create_command: true
+    analyze_command: false
+    display_name: "Role"
+    description: "Accountable or responsible parties within domains and decisions"
 
-  # New generic entity types with nested structure
-  solution:
-    id_prefix: "SOL"
-    name_field: "solution_name"
-    slug_field: "solution_slug"
-    template: "solution.md.j2"
-    directory_name: "solutions"
-    filename_pattern: "{entity_type}.md"    # → solution.md
-
-    # Hierarchy & Nesting
-    parent_entity: "domain"
-    child_entities: ["feature"]
-    nesting_strategy: "nested_directories"  # solutions/{slug}/solution.md
-    scoped_to_parent: true                  # Solution for specific domain
-    context_level: 2
-    required_fields: ["solution_name", "domain_id"]
-
-  feature:
-    id_prefix: "FEAT"
-    name_field: "feature_name"
-    slug_field: "feature_slug"
-    template: "feature.md.j2"
-    directory_name: "features"
-    filename_pattern: "{entity_type}.md"    # → feature.md
-
-    # Hierarchy & Nesting
-    parent_entity: "solution"
+  meeting:
+    namespace: "semops.core"
+    id_prefix: "MTG"
+    name_field: "meeting_name"
+    slug_field: "meeting_slug"
+    template_bundle:
+      create: "meeting.md.j2"
+      analyze: "meeting-analysis.md.j2"
+      prompts:
+        extract_decisions: "prompts/meeting-extract-decisions.txt"
+        extract_actions: "prompts/meeting-extract-actions.txt"
+    directory_name: "meetings"
+    filename_pattern: "{entity_type}.md"
+    nesting_strategy: "root"
+    parent_entity: null
     child_entities: []
-    nesting_strategy: "nested_directories"  # features/{slug}/feature.md
-    scoped_to_parent: true                  # Feature for specific solution
-    context_level: 3
-    required_fields: ["feature_name", "solution_id"]
+    required_fields: ["meeting_name", "meeting_date"]
+    context_level: 1
+    list_command: true
+    get_command: true
+    create_command: true
+    analyze_command: true
+    display_name: "Meeting"
+    description: "Recorded sessions that produce decisions, artefacts, and action items"
+
+  decision:
+    namespace: "semops.core"
+    id_prefix: "DEC"
+    name_field: "decision_name"
+    slug_field: "decision_slug"
+    template_bundle:
+      create: "decision.md.j2"
+      analyze: "decision-analysis.md.j2"
+      prompts:
+        summarize: "prompts/decision-summarize.txt"
+        extract_rationale: "prompts/decision-rationale.txt"
+        relate_to_domain: "prompts/decision-relate-domain.txt"
+    directory_name: "decisions"
+    filename_pattern: "{entity_type}.md"
+    nesting_strategy: "root"
+    parent_entity: null
+    child_entities: []
+    required_fields: ["decision_name", "decision_date", "status"]
+    context_level: 1
+    list_command: true
+    get_command: true
+    create_command: true
+    analyze_command: true
+    display_name: "Decision"
+    description: "Recorded decisions with rationale, status, and affected domains"
+
+  conversation:
+    namespace: "semops.core"
+    id_prefix: "CONV"
+    name_field: "conversation_name"
+    slug_field: "conversation_slug"
+    template_bundle:
+      create: "conversation.md.j2"
+      prompts:
+        extract_actions: "prompts/conversation-extract-actions.txt"
+        extract_artefacts: "prompts/conversation-extract-artefacts.txt"
+    directory_name: "conversations"
+    filename_pattern: "{entity_type}.md"
+    nesting_strategy: "root"
+    parent_entity: null
+    child_entities: []
+    required_fields: ["conversation_name"]
+    context_level: 1
+    list_command: true
+    get_command: true
+    create_command: true
+    analyze_command: true
+    display_name: "Conversation"
+    description: "Informal or async exchanges that may produce artefacts or feed into decisions"
+
+  artefact:
+    namespace: "semops.core"
+    id_prefix: "ART"
+    name_field: "artefact_name"
+    slug_field: "artefact_slug"
+    template_bundle:
+      create: "artefact.md.j2"
+      prompts:
+        summarize: "prompts/artefact-summarize.txt"
+    directory_name: "artefacts"
+    filename_pattern: "{entity_type}.md"
+    nesting_strategy: "root"
+    parent_entity: null
+    child_entities: []
+    required_fields: ["artefact_name", "artefact_type"]
+    context_level: 1
+    list_command: true
+    get_command: true
+    create_command: true
+    analyze_command: false
+    display_name: "Artefact"
+    description: "Documents, diagrams, or other outputs produced by meetings or conversations"
 ```
+
+### Relationship Types
+
+Relationships between entity instances are declared in a separate `relationship_types` section. This replaces the old `child_entities`/`parent_entity` approach for graph-style connections. Each relationship type specifies which entity types may participate, cardinality, and whether knowledge sources are shared across the link.
+
+```yaml
+relationship_types:
+
+  # A decision was made in a specific meeting
+  made_in:
+    namespace: "semops.core"
+    from_types: ["semops.core/decision"]
+    to_types: ["semops.core/meeting"]
+    cardinality: many_to_one
+    required: false
+    share_sources: false
+
+  # A decision affects one or more domains or roles
+  affects:
+    namespace: "semops.core"
+    from_types: ["semops.core/decision"]
+    to_types: ["semops.core/domain", "semops.core/role"]
+    cardinality: many_to_many
+    required: false
+    share_sources: false
+
+  # A role participates in a meeting or conversation (with optional capacity)
+  participates_in:
+    namespace: "semops.core"
+    from_types: ["semops.core/role"]
+    to_types: ["semops.core/meeting", "semops.core/conversation"]
+    cardinality: many_to_many
+    required: false
+    share_sources: false
+    metadata_schema:
+      - field: capacity          # e.g. "chair", "contributor", "observer"
+        type: string
+        required: false
+
+  # A meeting or conversation produces an artefact
+  produces:
+    namespace: "semops.core"
+    from_types: ["semops.core/meeting", "semops.core/conversation"]
+    to_types: ["semops.core/artefact"]
+    cardinality: many_to_many
+    required: false
+    share_sources: true          # Artefacts inherit sources from their producing meeting
+
+  # A meeting or conversation references an existing artefact
+  references:
+    namespace: "semops.core"
+    from_types: ["semops.core/meeting", "semops.core/conversation", "semops.core/decision"]
+    to_types: ["semops.core/artefact"]
+    cardinality: many_to_many
+    required: false
+    share_sources: false
+
+  # A role or meeting belongs to a domain (soft membership)
+  part_of:
+    namespace: "semops.core"
+    from_types: ["semops.core/role", "semops.core/meeting", "semops.core/decision"]
+    to_types: ["semops.core/domain"]
+    cardinality: many_to_many
+    required: false
+    share_sources: true          # Domain sources propagate to members
+    max_depth: 1
+
+  # A domain depends on another domain (cross-domain knowledge sharing)
+  depends_on:
+    namespace: "semops.core"
+    from_types: ["semops.core/domain"]
+    to_types: ["semops.core/domain"]
+    cardinality: many_to_many
+    required: false
+    share_sources: true
+    max_depth: 1
+```
+
+Relationship instances are stored as `EntityRelationship` records (defined in `services.proto`) and resolved at query time. The `relationship_type` field on `EntityRelationship` carries the fully-qualified key `{namespace}/{type_key}`.
+
+### Third-Party Entity Types
+
+A third-party package adds its own `entity_types.yaml` under its own namespace:
+
+```yaml
+# Contributed by an external package
+entity_types:
+  decision:
+    namespace: "com.acme.governance"    # distinct namespace — no collision with semops.core/decision
+    id_prefix: "DEC"                    # same short prefix is fine; uniqueness is namespace-scoped
+    template_bundle:
+      create: "acme-decision.md.j2"
+      prompts:
+        legal_review: "prompts/acme-decision-legal.txt"
+    ...
+```
+
+The `ConfigManager` loads this alongside built-in types. Both `semops.core/decision` and `com.acme.governance/decision` exist in the registry without conflict. Instances of each type carry their fully-qualified type key in `EntityID.entity_type`, making them unambiguous everywhere.
 
 ## Key Architectural Patterns
 
@@ -360,9 +551,24 @@ service EntityService {
 
 // schema/v1/core.proto - SHARED TYPES
 message EntityID {
-  string id = 1 [(validate.rules).string.pattern = "^[A-Z]{2,5}-[a-z0-9-]+$"];
-  string entity_type = 2;
-  string slug = 3 [(validate.rules).string.pattern = "^[a-z0-9-]+$"];
+  // Reverse-DNS namespace owning this type, e.g. "semops.core" or "com.acme"
+  string namespace = 1;
+
+  // Short prefix unique within the namespace, e.g. "DEC"
+  string prefix = 2 [(buf.validate.field).string.pattern = "^[A-Z]{2,6}$"];
+
+  // Fully-qualified type key: "{namespace}/{type_key}", e.g. "semops.core/decision"
+  string entity_type = 3 [(buf.validate.field).string.min_len = 1];
+
+  // URL-safe slug for file system and web usage (kebab-case)
+  string slug = 4 [(buf.validate.field).string.pattern = "^[a-z0-9-]+$"];
+
+  // Computed display ID: "{prefix}-{slug}", e.g. "DEC-budget-2026"
+  // Unique within a namespace; globally unique when qualified with namespace.
+  string id = 5;
+
+  // Domain path context for file operations
+  string domain_path = 6;
 }
 ```
 
@@ -854,88 +1060,76 @@ class Context:
 
 ### 7. Directory Structure Examples
 
-**Nested Generic Structure:**
+Ops entities are **flat root collections** — no deep nesting. Relationships between instances are recorded as `EntityRelationship` records, not as directory hierarchy.
+
 ```
-domain/cloud-security/                   # Root domain directory
-├── domain.md                            # Type-based filename for context
-├── sources/                             # Domain-level sources
-├── working/                             # Domain analysis files
-├── problems/                            # Problem entity directory
-│   ├── compliance-challenges/           # Problem slug directory
-│   │   ├── problem.md                   # Type-based filename
-│   │   ├── sources/                     # Problem-specific sources
-│   │   ├── working/
-│   │   └── personas/                    # Personas FOR THIS PROBLEM
-│   │       ├── security-manager/
-│   │       │   ├── persona.md           # Persona for this problem
-│   │       │   └── working/
-│   │       └── compliance-officer/
-│   │           ├── persona.md
-│   │           └── working/
-│   └── cost-optimization/               # Different problem
-│       ├── problem.md
-│       └── personas/                    # Different personas/instances
-│           └── budget-controller/
-│               └── persona.md
-├── solutions/                           # NEW: Solution entity directory
-│   └── zero-trust-platform/            # Solution slug directory
-│       ├── solution.md                  # Type-based filename
-│       ├── sources/
-│       ├── working/
-│       └── features/                    # Features FOR THIS SOLUTION
-│           ├── threat-detection/
-│           │   ├── feature.md
-│           │   └── working/
-│           └── compliance-dashboard/
-│               ├── feature.md
-│               └── working/
-└── research/                            # NEW: Research entity directory
-    └── market-analysis-2024/
-        ├── research.md
-        └── working/
+my-ops-workspace/
+├── .semops-project                  # Workspace root marker
+├── .semops/
+│   └── config/
+│       └── entity_types.yaml
+│
+├── domain/                          # Root collection: domains
+│   ├── cloud-governance/
+│   │   ├── domain.md
+│   │   └── sources/
+│   └── platform-engineering/
+│       └── domain.md
+│
+├── roles/                           # Root collection: roles (cross-cutting)
+│   ├── ciso/
+│   │   └── role.md
+│   └── platform-lead/
+│       └── role.md
+│
+├── meetings/                        # Root collection: meetings
+│   └── 2026-02-15-governance-review/
+│       ├── meeting.md
+│       └── sources/
+│
+├── decisions/                       # Root collection: decisions
+│   └── adopt-zero-trust-model/
+│       └── decision.md              # Links: made_in MTG-*, affects DOM-*, part_of DOM-*
+│
+├── conversations/                   # Root collection: conversations
+│   └── slack-thread-ciso-2026-02-12/
+│       └── conversation.md
+│
+└── artefacts/                       # Root collection: artefacts
+    └── zero-trust-architecture-diagram/
+        └── artefact.md
 ```
 
-**Context Detection Examples:**
+**Context Detection Example:**
 
-Working Directory: `/domain/cloud-security/problems/compliance-challenges/personas/security-manager/`
+Working directory: `/my-ops-workspace/decisions/adopt-zero-trust-model/`
 
-Detected Context:
+Detected context:
 ```yaml
 context:
   current_entity:
-    entity_type: "persona"
-    entity_id: "PERS-security-manager"
-    slug: "security-manager"
-    nesting_level: 3
+    entity_type: "semops.core/decision"
+    entity_id: "DEC-adopt-zero-trust-model"
+    namespace: "semops.core"
+    slug: "adopt-zero-trust-model"
 
-  hierarchy:
-    domain:
-      entity_id: "DOM-cloud-security"
-      slug: "cloud-security"
-      path: "/domain/cloud-security"
-      file: "domain.md"
-    problem:
-      entity_id: "PROB-compliance-challenges"
-      slug: "compliance-challenges"
-      path: "/domain/cloud-security/problems/compliance-challenges"
-      file: "problem.md"
-      parent_id: "DOM-cloud-security"
-    persona:
-      entity_id: "PERS-security-manager"
-      slug: "security-manager"
-      path: "/domain/cloud-security/problems/compliance-challenges/personas/security-manager"
-      file: "persona.md"
-      parent_id: "PROB-compliance-challenges"
+  relationships:
+    - type: "semops.core/made_in"
+      to: "MTG-2026-02-15-governance-review"
+    - type: "semops.core/affects"
+      to: "DOM-cloud-governance"
+    - type: "semops.core/part_of"
+      to: "DOM-cloud-governance"
 
-  scoped_relationships:
-    - "This persona exists FOR compliance-challenges problem"
-    - "This persona exists WITHIN cloud-security domain"
-    - "Persona is scoped to specific problem context"
+  available_operations:
+    - "semops decision analyze"
+    - "semops decision relate"
+    - "semops decision list --related-to MTG-2026-02-15-governance-review"
 ```
 
 ### 6. Source Management Model (Across Entities)
 
-SemOps2 treats knowledge sources as first-class, configurable resources that can be associated at any entity level (domain, problem, persona, product, or any future type). The model supports inheritance, overrides, and cross-domain relationships while preserving a clear and deterministic resolution algorithm.
+SemOps2 treats knowledge sources as first-class, configurable resources that can be associated at any entity level. The model supports inheritance, overrides, and cross-domain relationships while preserving a clear and deterministic resolution algorithm.
 
 #### Concepts
 
@@ -961,11 +1155,11 @@ source_types:
     processor: readability_html
     chunker: semantic_text
     enrichers: [relationships, tags]
-    attach_to: ["domain", "problem", "persona", "product"]
-    default_scope: "inherit"  # inherit to descendants unless overridden
+    attach_to: ["semops.core/domain", "semops.core/meeting", "semops.core/decision", "semops.core/artefact"]
+    default_scope: "inherit"  # propagate to related entities via share_sources relationships
 
 settings:
-  roots: ["domain"]  # root entity types in the hierarchy
+  roots: ["semops.core/domain"]  # entity types that anchor inheritance trees
 ```
 
 #### Source Association (Frontmatter)
@@ -1032,22 +1226,78 @@ class KnowledgeService:
         """Rebuild vector/graph indexes for sources attached to an entity or the whole tree."""
 ```
 
-#### Relationships and Cross-Domain Source Sharing
+#### The Two-Graph Model
 
-To support domains that relate to other domains (graph vs strict tree), introduce typed relationships with explicit source-sharing policies.
+SemOps2 uses **two distinct graph stores** with different schemas, owners, and query patterns. Conflating them into one store is the primary risk in adding graph DB support.
+
+| | Knowledge Graph | Entity Graph |
+|---|---|---|
+| **Owns** | `KnowledgeService` | `EntityService` |
+| **Contains** | Source documents, chunks, concepts, citations | Ops entities (domains, meetings, decisions, roles…) |
+| **Nodes** | `Document`, `Chunk`, `Concept`, `Person`, `Organization` | `Entity` (one node per `EntityDocument`) |
+| **Edges** | `IMPLEMENTS`, `MITIGATES`, `CONTAINS`, `REFERENCES`, `RELATES_TO` | Config-defined relationship types (`part_of`, `made_in`, `affects`, …) |
+| **Primary DB** | Neo4j (or equivalent) — named `knowledge_graph` in config | Neo4j (same server, different database) — named `entity_graph` in config |
+| **Dev/small** | NetworkX in-memory | NetworkX in-memory |
+| **Query language** | Cypher, `graph_enhanced` RAG workflow | `GetEntityRelationships` RPC + `entity_graph_traversal` workflow |
+| **Source sharing** | N/A — knowledge graph does not drive inheritance | `share_sources: true` on relationship types drives source resolution |
+
+**Rules:**
+1. `KnowledgeService` writes to and reads from `knowledge_graph` only. It never queries `entity_graph` directly.
+2. `EntityService` writes to and reads from `entity_graph` only. It never queries `knowledge_graph` directly.
+3. When a `KnowledgeService` retrieval needs entity context (e.g. "find sources relevant to this decision"), it receives the `EntityID` as a scope parameter and resolves the attached `entity_ids` from `KnowledgeSource` records — it does not traverse `entity_graph`.
+4. The `graph_enhanced` RAG workflow expands through `knowledge_graph`. The `entity_graph_traversal` workflow expands through `entity_graph` to gather related entity IDs, then scopes a vector search.
+
+**Storage backend config keys** (in `storage_backends.yaml`):
 
 ```yaml
-# config/entity_types.yaml (excerpt)
-relationships:
-  - name: "depends_on"
-    from: "domain"
-    to: "domain"
+storage_backends:
+  knowledge_graph:          # Neo4j database: "semops_knowledge"
+    type: "graph"
+    role: "knowledge"       # NEW: distinguishes from entity_graph
+    implementation: "neo4j"
+    ...
+
+  entity_graph:             # Neo4j database: "semops_entities"
+    type: "graph"
+    role: "entity"          # NEW: distinguishes from knowledge_graph
+    implementation: "neo4j"
+    ...
+
+  # Dev/test equivalents
+  knowledge_graph_dev:
+    type: "graph"
+    role: "knowledge"
+    implementation: "networkx"
+    ...
+
+  entity_graph_dev:
+    type: "graph"
+    role: "entity"
+    implementation: "networkx"
+    ...
+```
+
+The `role` field is what the `KnowledgeService` and `EntityService` use to locate the correct backend — not the key name. This lets you rename or swap implementations without changing service code.
+
+#### Relationships and Cross-Domain Source Sharing
+
+To support entities that relate across domains (graph vs strict tree), typed relationships carry explicit source-sharing policies.
+
+```yaml
+# config/entity_types.yaml (excerpt) — see full relationship_types section above
+relationship_types:
+  depends_on:
+    namespace: "semops.core"
+    from_types: ["semops.core/domain"]
+    to_types: ["semops.core/domain"]
     share_sources: true          # include sources from target in resolution
     max_depth: 1                 # prevent runaway unions
-  - name: "informs"
-    from: "problem"
-    to: "problem"
-    share_sources: false         # metadata-only, no source union
+  part_of:
+    namespace: "semops.core"
+    from_types: ["semops.core/decision", "semops.core/meeting"]
+    to_types: ["semops.core/domain"]
+    share_sources: true          # domain sources propagate to members
+    max_depth: 1
 ```
 
 Resolution step (3) uses `share_sources` to decide whether to include sources from related entities and respects `max_depth`.
@@ -1112,12 +1362,18 @@ This model preserves today’s domain-root behavior while enabling fine-grained 
 - **Validation Rules** - Configurable validation without code changes
 - **Rapid Prototyping** - Quick addition of new entity types for experimentation
 
-## Next Steps
+## Current Status and Next Steps
 
-1. **Validate Approach** - Review architecture with stakeholders
-2. **Create Detailed Design** - Expand each component with implementation details
-3. **Build Prototype** - Implement core components with basic functionality
-4. **Test with Existing Data** - Validate against current SemOps domains and problems
-5. **Plan Migration** - Define strategy for moving from v1 to v2
+**Sprint 0 is complete.** Protobuf schemas are defined and generating Python/gRPC/OpenAPI artifacts. The gRPC server scaffold exists. All tests are currently skipped placeholders.
 
-This generic architecture maintains all the power and flexibility of the current SemOps system while eliminating the rigid entity-specific structure that limits extensibility and creates maintenance overhead.
+### Immediate priorities
+
+1. **Update `core.proto`** — Add `namespace` and `prefix` fields to `EntityID`; relax the `id` pattern to derive from `{prefix}-{slug}`; update `entity_type` to carry the fully-qualified `{namespace}/{type_key}` string (removing any hardcoded enum)
+2. **Add `ListRelationshipTypes` RPC** to `services.proto` — allows runtime introspection of configured relationship types
+3. **Implement `ConfigManager`** — loads `entity_types.yaml` with namespace validation; builds the type registry; rejects `semops.*` namespace claims from non-builtin sources
+4. **Implement `EntityService`** — CRUD backed by filesystem, using generated protobuf types
+5. **Implement `ContextDetector`** — walks directory tree, resolves flat root collections, loads relationship context from entity frontmatter
+6. **Write ops entity templates** — `decision.md.j2`, `meeting.md.j2`, `role.md.j2`, `conversation.md.j2`, `artefact.md.j2` with prompt bundles
+7. **Activate contract tests** — remove `pytest.mark.skip` from `tests/contracts/`
+
+This architecture maintains all the power and flexibility required for generic entity management while adding the namespace model needed for safe third-party extensibility and the flat-collection / relationship-graph model needed for operations use cases.

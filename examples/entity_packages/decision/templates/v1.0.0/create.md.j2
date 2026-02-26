@@ -1,0 +1,92 @@
+# {{decision_name}}
+
+**Entity Type**: Decision
+**ID**: {{entity_id}}
+**Status**: {{status | default("draft")}}
+**Type**: {{decision_type | default("operational")}}
+
+## Decision Statement
+
+{{decision_statement}}
+
+## Desired Outcome
+
+{{desired_outcome | default("_To be defined_")}}
+
+## Scope
+
+### Included
+{% if scope_included %}
+{% for item in scope_included %}
+- {{item}}
+{% endfor %}
+{% else %}
+_Scope to be defined_
+{% endif %}
+
+### Excluded
+{% if scope_excluded %}
+{% for item in scope_excluded %}
+- {{item}}
+{% endfor %}
+{% endif %}
+
+## Options Considered
+
+{% if options_considered %}
+{% for option in options_considered %}
+### Option {{loop.index}}: {{option.name}}
+{{option.description}}
+
+**Pros:**
+{% for pro in option.pros %}
+- {{pro}}
+{% endfor %}
+
+**Cons:**
+{% for con in option.cons %}
+- {{con}}
+{% endfor %}
+{% endfor %}
+{% else %}
+_Options to be explored_
+{% endif %}
+
+## Stakeholders
+
+**Decision Makers:**
+{% if decision_makers %}
+{% for maker in decision_makers %}
+- [[{{maker.role_id}}]] - {{maker.name}}
+{% endfor %}
+{% else %}
+_To be identified_
+{% endif %}
+
+**Advisors:**
+{% if advisors %}
+{% for advisor in advisors %}
+- [[{{advisor.role_id}}]] - {{advisor.name}}
+{% endfor %}
+{% endif %}
+
+## Rationale
+
+{{rationale | default("_Rationale to be documented_")}}
+
+{% if assumptions and assumptions | length > 0 %}
+## Assumptions
+
+{% for assumption in assumptions %}
+- {{assumption}}
+{% endfor %}
+{% endif %}
+
+## Metadata
+
+- **Created**: {{created_date | default("{{now}}")}}
+- **Effective Date**: {{effective_date | default("TBD")}}
+- **Template Version**: {{template_version | default("1.0.0")}}
+{% if authority_source %}
+- **Authority Source**: [[{{authority_source}}]]
+{% endif %}

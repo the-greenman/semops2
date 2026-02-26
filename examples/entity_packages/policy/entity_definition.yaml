@@ -1,0 +1,35 @@
+# Policy Entity Type Definition
+
+entity_type:
+  type_key: "policy"
+  namespace: "org.collaborative"
+  id_prefix: "POL"
+  name_field: "policy_name"
+  slug_field: "policy_slug"
+  display_name: "Policy"
+  description: "Established policies with authority levels and enforcement"
+
+  template_bundle:
+    create: "create.md.j2"
+    analyze: "analyze.md.j2"
+
+  template_version: "1.0.0"
+
+  directory_name: "policies"
+  filename_pattern: "{entity_type}.md"
+  nesting_strategy: "root"
+
+  required_fields:
+    - "policy_name"
+    - "effective_date"
+    - "status"
+    - "authority_level"
+
+  unique_fields:
+    - "policy_slug"
+
+  context_level: 1
+  list_command: true
+  get_command: true
+  create_command: true
+  analyze_command: true

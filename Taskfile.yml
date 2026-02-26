@@ -1,0 +1,61 @@
+version: '3'
+
+silent: true
+
+tasks:
+  default:
+    desc: List available tasks
+    cmds:
+      - task -l
+
+  buf:lint:
+    desc: Lint protobuf schemas
+    cmds:
+      - buf lint
+
+  buf:format:
+    desc: Check protobuf formatting (no changes)
+    cmds:
+      - buf format --diff --exit-code
+
+  buf:format:write:
+    desc: Format protobuf files (writes changes)
+    cmds:
+      - buf format -w
+
+  buf:dep:update:
+    desc: Update buf dependencies (writes buf.lock)
+    cmds:
+      - buf dep update
+
+  buf:generate:
+    desc: Generate code/docs/OpenAPI from protobuf schemas
+    deps:
+      - buf:dep:update
+    cmds:
+      - buf generate
+
+  buf:breaking:
+    desc: Check for breaking changes against main branch
+    cmds:
+      - buf breaking --against '.git#branch=main'
+
+  test:quick:
+    desc: Run quick validation (buf + tests)
+    cmds:
+      - scripts/test-runner.sh quick
+
+  test:full:
+    desc: Run full validation suite (buf + tests)
+    cmds:
+      - scripts/test-runner.sh full
+
+  generated:check:
+    desc: Check generated files for sync issues
+    cmds:
+      - scripts/validate-generated.sh check
+
+  generated:regenerate:
+    desc: Regenerate all generated files
+    cmds:
+      - scripts/validate-generated.sh regenerate

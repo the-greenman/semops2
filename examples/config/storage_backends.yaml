@@ -123,49 +123,66 @@ storage_backends:
 
   # =====================================
   # Graph Stores
+  #
+  # TWO-GRAPH MODEL
+  # ---------------
+  # SemOps2 maintains two separate graph stores with distinct roles:
+  #
+  #   role: "knowledge"  — owned by KnowledgeService
+  #     Nodes: Document, Chunk, Concept, Person, Organization
+  #     Edges: IMPLEMENTS, MITIGATES, CONTAINS, REFERENCES, RELATES_TO
+  #     Used by: graph_enhanced RAG workflow (Cypher traversal)
+  #
+  #   role: "entity"     — owned by EntityService
+  #     Nodes: one per EntityDocument (domain, meeting, decision, role, …)
+  #     Edges: config-defined relationship types (part_of, made_in, affects, …)
+  #     Used by: GetEntityRelationships RPC, entity_graph_traversal workflow
+  #
+  # Services locate the correct backend by role, not by key name.
+  # KnowledgeService must never query entity_graph.
+  # EntityService must never query knowledge_graph.
   # =====================================
 
-  # Neo4j - Property graph database
-  neo4j:
+  # knowledge_graph — Neo4j, production (owned by KnowledgeService)
+  knowledge_graph:
     type: "graph"
-    name: "Neo4j"
-    description: "Leading property graph database"
-    icon: "🕸️"
-    category: "graph"
+    role: "knowledge"
+    name: "Knowledge Graph (Neo4j)"
+    description: "Document/chunk/concept graph for RAG enrichment"
+    implementation: "neo4j"
 
     configuration:
       url: "bolt://localhost:7687"
       username_env: "NEO4J_USERNAME"
       password_env: "NEO4J_PASSWORD"
-      database: "neo4j"  # Default database
+      database: "semops_knowledge"
       max_connection_lifetime: 3600
       max_connection_pool_size: 50
       connection_timeout: 30
 
-    # Graph Schema
     schema:
       node_types:
         - "Document"
         - "Chunk"
-        - "Entity"
+        - "Concept"
         - "Person"
         - "Organization"
-        - "Concept"
       relationship_types:
-        - "CONTAINS"
-        - "REFERENCES"
-        - "RELATES_TO"
-        - "CREATED_BY"
-        - "PART_OF"
-        - "SIMILAR_TO"
+        - "CONTAINS"       # Document → Chunk
+        - "IMPLEMENTS"     # Concept → Concept
+        - "MITIGATES"      # Control → Threat
+        - "REFERENCES"     # Document → Document
+        - "RELATES_TO"     # generic concept relationship
+        - "CREATED_BY"     # Document → Person/Organization
+        - "SIMILAR_TO"     # Chunk → Chunk (embedding similarity)
 
     capabilities:
       - "graph_traversal"
       - "pattern_matching"
+      - "cypher_queries"
       - "centrality_analysis"
       - "community_detection"
       - "shortest_path"
-      - "cypher_queries"
 
     performance:
       query_timeout: 30
@@ -175,18 +192,72 @@ storage_backends:
     requirements:
       - "neo4j>=5.0.0"
 
-  # NetworkX - In-memory graph for development
-  networkx:
+  # entity_graph — Neo4j, production (owned by EntityService)
+  entity_graph:
     type: "graph"
-    name: "NetworkX"
-    description: "In-memory graph for development and small datasets"
-    icon: "📊"
-    category: "graph"
+    role: "entity"
+    name: "Entity Graph (Neo4j)"
+    description: "Ops entity relationship graph (domains, decisions, meetings, roles, …)"
+    implementation: "neo4j"
 
     configuration:
-      persist_directory: "{domain_path}/knowledge/.graphs"
-      graph_format: "graphml"  # graphml, gml, json
-      auto_save_interval: 300  # seconds
+      url: "bolt://localhost:7687"
+      username_env: "NEO4J_USERNAME"
+      password_env: "NEO4J_PASSWORD"
+      database: "semops_entities"   # separate database on same server
+      max_connection_lifetime: 3600
+      max_connection_pool_size: 50
+      connection_timeout: 30
+
+    schema:
+      # One node type per EntityDocument. Labels are the fully-qualified type key.
+      # e.g. (:Entity {entity_type: "semops.core/decision", entity_id: "DEC-..."})
+      node_label: "Entity"
+      node_properties:
+        - "entity_id"         # display ID: "DEC-adopt-zero-trust"
+        - "entity_type"       # FQ key: "semops.core/decision"
+        - "namespace"         # "semops.core"
+        - "slug"
+        - "name"
+        - "status"
+        - "created_at"
+        - "updated_at"
+      # Edge types mirror the relationship_type keys from entity_types.yaml.
+      # e.g. (:Entity)-[:PART_OF]->(:Entity)
+      # Edges carry a "namespace" property for the relationship type namespace.
+      relationship_properties:
+        - "relationship_id"
+        - "relationship_type"   # FQ key: "semops.core/part_of"
+        - "namespace"
+        - "status"
+        - "metadata"            # JSON-serialised Struct
+        - "created_at"
+
+    capabilities:
+      - "graph_traversal"
+      - "pattern_matching"
+      - "cypher_queries"
+      - "shortest_path"
+
+    performance:
+      query_timeout: 30
+      batch_size: 500
+
+    requirements:
+      - "neo4j>=5.0.0"
+
+  # knowledge_graph_dev — NetworkX, development (owned by KnowledgeService)
+  knowledge_graph_dev:
+    type: "graph"
+    role: "knowledge"
+    name: "Knowledge Graph (NetworkX, dev)"
+    description: "In-memory knowledge graph for development and testing"
+    implementation: "networkx"
+
+    configuration:
+      persist_directory: "{workspace_path}/.semops/knowledge/.knowledge_graph"
+      graph_format: "graphml"
+      auto_save_interval: 300
 
     capabilities:
       - "graph_traversal"
@@ -196,12 +267,37 @@ storage_backends:
       - "graph_visualization"
 
     performance:
-      max_nodes: 10000  # Memory limitations
+      max_nodes: 10000
       max_edges: 50000
 
     requirements:
       - "networkx"
-      - "matplotlib"  # For visualization
+      - "matplotlib"
+
+  # entity_graph_dev — NetworkX, development (owned by EntityService)
+  entity_graph_dev:
+    type: "graph"
+    role: "entity"
+    name: "Entity Graph (NetworkX, dev)"
+    description: "In-memory entity relationship graph for development and testing"
+    implementation: "networkx"
+
+    configuration:
+      persist_directory: "{workspace_path}/.semops/knowledge/.entity_graph"
+      graph_format: "graphml"
+      auto_save_interval: 60   # more frequent — entity graph changes often
+
+    capabilities:
+      - "graph_traversal"
+      - "pattern_matching"
+      - "local_analysis"
+
+    performance:
+      max_nodes: 5000
+      max_edges: 20000
+
+    requirements:
+      - "networkx"
 
   # =====================================
   # Hybrid Stores
@@ -410,44 +506,51 @@ storage_backends:
 
 # Default Storage Strategies
 default_storage_strategies:
-  # Strategy based on source type
+  # Strategy based on source type (knowledge graph only — entity graph is always entity_graph/entity_graph_dev)
   by_source_type:
     web_content: ["chromadb"]
-    documents: ["chromadb", "neo4j"]
-    api_feeds: ["neo4j", "elasticsearch"]
-    code_repos: ["neo4j", "elasticsearch"]
-    knowledge_graphs: ["neo4j"]
+    documents: ["chromadb", "knowledge_graph"]
+    api_feeds: ["knowledge_graph", "elasticsearch"]
+    code_repos: ["knowledge_graph", "elasticsearch"]
+    knowledge_graphs: ["knowledge_graph"]
     media_content: ["multimodal_chroma"]
-    internal_knowledge: ["chromadb", "networkx"]
+    internal_knowledge: ["chromadb", "knowledge_graph"]
     realtime_feeds: ["influxdb", "chromadb"]
-    enterprise_systems: ["neo4j", "elasticsearch"]
+    enterprise_systems: ["knowledge_graph", "elasticsearch"]
 
-  # Strategy based on domain size
-  by_domain_size:
+  # Strategy based on workspace size
+  by_workspace_size:
     small:  # < 1000 documents
-      primary: "chromadb"
-      secondary: "networkx"
+      vector: "chromadb"
+      knowledge_graph: "knowledge_graph_dev"
+      entity_graph: "entity_graph_dev"
     medium:  # 1000-10000 documents
-      primary: "elasticsearch"
-      secondary: "neo4j"
+      vector: "elasticsearch"
+      knowledge_graph: "knowledge_graph"
+      entity_graph: "entity_graph"
     large:  # > 10000 documents
-      primary: "pinecone"
-      secondary: "neo4j"
+      vector: "pinecone"
+      knowledge_graph: "knowledge_graph"
+      entity_graph: "entity_graph"
 
   # Strategy based on use case
   by_use_case:
     development:
-      primary: "chromadb"
-      secondary: "networkx"
+      vector: "chromadb"
+      knowledge_graph: "knowledge_graph_dev"
+      entity_graph: "entity_graph_dev"
     production:
-      primary: "elasticsearch"
-      secondary: "neo4j"
+      vector: "elasticsearch"
+      knowledge_graph: "knowledge_graph"
+      entity_graph: "entity_graph"
     enterprise:
-      primary: "pinecone"
-      secondary: "neo4j"
+      vector: "pinecone"
+      knowledge_graph: "knowledge_graph"
+      entity_graph: "entity_graph"
     multimodal:
-      primary: "multimodal_chroma"
-      secondary: "qdrant"
+      vector: "multimodal_chroma"
+      knowledge_graph: "knowledge_graph"
+      entity_graph: "entity_graph"
 
 # Global Storage Configuration
 storage_config:

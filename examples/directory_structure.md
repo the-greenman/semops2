@@ -1,312 +1,215 @@
 # SemOps2 Directory Structure Examples
 
-This document shows how the generic entity configuration maps to actual directory structures, demonstrating the flexibility of the new architecture.
+Ops entity types use **flat root collections** — each type has its own top-level directory, not a nested hierarchy. Relationships between instances are stored as `EntityRelationship` records and referenced via YAML frontmatter, not by directory nesting.
 
-## Standard Nested Hierarchy Example
-
-```
-domain/cloud-security/                   # Root domain directory
-├── domain.md                            # Type-based filename for context detection
-├── sources/                             # Domain-level sources (unchanged)
-│   ├── sources.md
-│   ├── raw/
-│   └── notes/
-├── internal/                            # Internal sources (unchanged)
-│   ├── raw/
-│   └── notes/
-├── working/                             # Working files (unchanged)
-│   ├── domain_analysis_generated.md
-│   └── domain_guidance.md
-├── problems/                            # Problem entity directory
-│   ├── compliance-challenges/           # Problem slug directory
-│   │   ├── problem.md                   # Type-based filename
-│   │   ├── sources/                     # Problem-specific sources
-│   │   ├── working/                     # Problem analysis files
-│   │   └── personas/                    # Personas FOR THIS PROBLEM
-│   │       ├── security-manager/
-│   │       │   ├── persona.md           # Type-based filename
-│   │       │   └── working/
-│   │       └── compliance-officer/
-│   │           ├── persona.md
-│   │           └── working/
-│   └── cost-optimization/               # Different problem
-│       ├── problem.md
-│       ├── sources/
-│       ├── working/
-│       └── personas/                    # Different persona instances
-│           └── budget-controller/
-│               ├── persona.md
-│               └── working/
-└── solutions/                           # Solution entity directory (NEW)
-    └── zero-trust-platform/            # Solution slug directory
-        ├── solution.md                  # Type-based filename
-        ├── sources/                     # Solution-specific sources
-        ├── working/                     # Solution analysis files
-        └── features/                    # Features FOR THIS SOLUTION
-            ├── threat-detection/
-            │   ├── feature.md           # Type-based filename
-            │   └── working/
-            └── compliance-dashboard/
-                ├── feature.md
-                └── working/
-```
-
-## Extended Hierarchy with New Entity Types
+## Standard Ops Workspace
 
 ```
-domain/cloud-security/                  # Consistent kebab-case
-├── domain.md                           # Type-based filename for context detection
-├── problems/
-│   └── compliance-challenges/          # Directory per entity instance
-│       └── problem.md                  # Type-based filename
-├── personas/
-│   └── security-manager/               # Directory per entity instance
-│       └── persona.md                  # Type-based filename
-├── products/
-│   └── zero-trust-platform/           # Directory per entity instance
-│       └── product.md                  # Type-based filename
-├── solutions/                          # NEW: Solution approaches
-│   └── ai-threat-detection/            # Kebab-case directory
-│       ├── solution.md                 # Type-based filename
-│       └── features/                   # NEW: Features within solutions
-│           ├── real-time-monitoring/   # Kebab-case directories
-│           │   └── feature.md          # Type-based filename
-│           ├── threat-correlation/
-│           │   └── feature.md
-│           └── automated-response/
-│               └── feature.md
-├── research/                           # NEW: Research artifacts
-│   ├── market-analysis-2024/
-│   │   └── research.md                 # Type-based filename
-│   ├── user-interview-summary/
-│   │   └── research.md
-│   └── competitive-landscape/
-│       └── research.md
-├── strategies/                         # NEW: Strategic initiatives
-│   └── go-to-market-strategy/
-│       ├── strategy.md                 # Type-based filename
-│       └── initiatives/                # NEW: Specific initiatives
-│           ├── partnership-program/
-│           │   └── initiative.md       # Type-based filename
-│           ├── content-marketing/
-│           │   └── initiative.md
-│           └── analyst-engagement/
-│               └── initiative.md
-└── integrations/                       # NEW: Integration points
-    ├── existing-siem-integration/
-    │   └── integration.md              # Type-based filename
-    └── cloud-provider-connectors/
-        └── integration.md
+my-ops-workspace/
+├── .semops-project                      # Workspace root marker
+├── .semops/
+│   └── config/
+│       └── entity_types.yaml            # Entity types and relationship types
+│
+├── domain/                              # Root collection: domains
+│   ├── cloud-governance/
+│   │   ├── domain.md
+│   │   └── sources/
+│   ├── platform-engineering/
+│   │   └── domain.md
+│   └── security-operations/
+│       └── domain.md
+│
+├── roles/                               # Root collection: roles (cross-cutting)
+│   ├── ciso/
+│   │   └── role.md
+│   ├── platform-lead/
+│   │   └── role.md
+│   └── security-engineer/
+│       └── role.md
+│
+├── meetings/                            # Root collection: meetings
+│   ├── 2026-02-15-governance-review/
+│   │   ├── meeting.md
+│   │   └── sources/
+│   └── 2026-02-08-platform-standup/
+│       └── meeting.md
+│
+├── decisions/                           # Root collection: decisions
+│   ├── adopt-zero-trust-model/
+│   │   └── decision.md
+│   └── migrate-to-platform-engineering/
+│       └── decision.md
+│
+├── conversations/                       # Root collection: conversations
+│   ├── slack-ciso-2026-02-12/
+│   │   └── conversation.md
+│   └── email-vendor-review-2026-02-10/
+│       └── conversation.md
+│
+└── artefacts/                           # Root collection: artefacts
+    ├── zero-trust-architecture-diagram/
+    │   └── artefact.md
+    └── platform-roadmap-q1-2026/
+        └── artefact.md
 ```
 
-## Alternative Hierarchy: Market Segment Focus
+## Entity Frontmatter and Relationship Links
 
-```
-domain/enterprise-software/
-├── domain.md                           # Type-based filename
-├── segments/                           # NEW: Market segments
-│   ├── small-business/                 # Kebab-case directory
-│   │   └── segment.md                  # Type-based filename
-│   ├── mid-market/
-│   │   └── segment.md
-│   └── enterprise/
-│       └── segment.md
-├── problems/
-│   ├── digital-transformation/         # Kebab-case directories
-│   │   └── problem.md                  # Type-based filename
-│   └── legacy-modernization/
-│       └── problem.md
-└── personas/
-    ├── small-business/                 # Personas organized by segment
-    │   ├── small-biz-owner/            # Kebab-case directories
-    │   │   └── persona.md              # Type-based filename
-    │   └── it-generalist/
-    │       └── persona.md
-    ├── mid-market/
-    │   ├── it-director/
-    │   │   └── persona.md
-    │   └── business-analyst/
-    │       └── persona.md
-    └── enterprise/
-        ├── enterprise-architect/
-        │   └── persona.md
-        └── procurement-manager/
-            └── persona.md
-```
+Relationships between entities are declared in the entity's YAML frontmatter. The full relationship records are stored as `EntityRelationship` messages and indexed separately for querying.
 
-## Cross-Cutting Entity Types
+### decision.md example
 
-```
-domain/cloud-security/
-├── domain.md                           # Type-based filename
-├── [standard hierarchy...]
-├── integrations/                       # Cross-cutting integrations
-│   ├── siem-connector/                 # Kebab-case directories
-│   │   └── integration.md              # Type-based filename
-│   ├── cloud-api-gateway/              # Integration specifications
-│   │   └── integration.md
-│   └── third-party-feeds/
-│       └── integration.md
-├── research/                           # Domain-level research
-│   ├── threat-landscape-2024/          # Kebab-case directories
-│   │   └── research.md                 # Type-based filename
-│   ├── customer-pain-points/           # User research
-│   │   └── research.md
-│   └── technology-trends/              # Technical research
-│       └── research.md
-└── strategies/                         # Strategic planning
-    ├── market-penetration/             # Kebab-case directories
-    │   └── strategy.md                 # Type-based filename
-    ├── product-roadmap/                # Product strategy
-    │   └── strategy.md
-    └── partnership-strategy/           # Go-to-market strategy
-        └── strategy.md
+```yaml
+---
+entity_type: "semops.core/decision"
+entity_id: "DEC-adopt-zero-trust-model"
+namespace: "semops.core"
+decision_name: "Adopt Zero Trust Model"
+decision_date: "2026-02-15"
+status: "active"
+
+# Typed relationships — validated against relationship_types config
+relationships:
+  - type: "semops.core/made_in"
+    to: "MTG-2026-02-15-governance-review"
+  - type: "semops.core/part_of"
+    to: "DOM-cloud-governance"
+  - type: "semops.core/affects"
+    to: "DOM-cloud-governance"
+  - type: "semops.core/affects"
+    to: "ROLE-ciso"
+  - type: "semops.core/references"
+    to: "ART-zero-trust-architecture-diagram"
+---
+
+## Decision
+
+...
 ```
 
-## Context Detection Examples
+### meeting.md example
 
-The generic context detector understands entity relationships from directory structure:
+```yaml
+---
+entity_type: "semops.core/meeting"
+entity_id: "MTG-2026-02-15-governance-review"
+namespace: "semops.core"
+meeting_name: "Governance Review 2026-02-15"
+meeting_date: "2026-02-15"
 
-### Working Directory: `/domain/cloud-security/problems/compliance-challenges/personas/security-manager/`
+relationships:
+  - type: "semops.core/part_of"
+    to: "DOM-cloud-governance"
+  - type: "semops.core/produces"
+    to: "ART-zero-trust-architecture-diagram"
+
+# Participants stored as participates_in relationships on the role entities,
+# or inlined here for convenience:
+participants:
+  - role_id: "ROLE-ciso"
+    capacity: "chair"
+  - role_id: "ROLE-platform-lead"
+    capacity: "contributor"
+---
+
+## Notes
+
+...
+```
+
+## Context Detection
+
+The context detector finds the nearest entity document by walking up from the current directory.
+
+### Working directory: `/my-ops-workspace/decisions/adopt-zero-trust-model/`
+
 ```yaml
 detected_context:
   current_entity:
-    entity_type: "persona"
-    entity_id: "PERS-security-manager"
-    slug: "security-manager"
-    nesting_level: 3
+    entity_type: "semops.core/decision"
+    entity_id: "DEC-adopt-zero-trust-model"
+    namespace: "semops.core"
+    slug: "adopt-zero-trust-model"
 
-  hierarchy:
-    domain:
-      entity_id: "DOM-cloud-security"
-      slug: "cloud-security"
-      path: "/domain/cloud-security"
-      file: "domain.md"
-    problem:
-      entity_id: "PROB-compliance-challenges"
-      slug: "compliance-challenges"
-      path: "/domain/cloud-security/problems/compliance-challenges"
-      file: "problem.md"
-      parent_id: "DOM-cloud-security"
-    persona:
-      entity_id: "PERS-security-manager"
-      slug: "security-manager"
-      path: "/domain/cloud-security/problems/compliance-challenges/personas/security-manager"
-      file: "persona.md"
-      parent_id: "PROB-compliance-challenges"
+  relationships:
+    - type: "semops.core/made_in"
+      to: "MTG-2026-02-15-governance-review"
+    - type: "semops.core/part_of"
+      to: "DOM-cloud-governance"
+    - type: "semops.core/affects"
+      to: "DOM-cloud-governance"
 
-  scoped_relationships:
-    - "Persona scoped to compliance-challenges problem"
-    - "Problem scoped to cloud-security domain"
+  available_operations:
+    - "semops decision analyze"
+    - "semops decision analyze --prompt extract_rationale"
+    - "semops decision relate"
+    - "semops decision list --related-to MTG-2026-02-15-governance-review"
 ```
 
-### Working Directory: `/domain/cloud-security/solutions/zero-trust-platform/features/threat-detection/`
+### Working directory: `/my-ops-workspace/meetings/2026-02-15-governance-review/`
+
 ```yaml
 detected_context:
   current_entity:
-    entity_type: "feature"
-    entity_id: "FEAT-threat-detection"
-    slug: "threat-detection"
-    nesting_level: 3
+    entity_type: "semops.core/meeting"
+    entity_id: "MTG-2026-02-15-governance-review"
+    namespace: "semops.core"
+    slug: "2026-02-15-governance-review"
 
-  hierarchy:
-    domain:
-      entity_id: "DOM-cloud-security"
-      slug: "cloud-security"
-      path: "/domain/cloud-security"
-      file: "domain.md"
-    solution:
-      entity_id: "SOL-zero-trust-platform"
-      slug: "zero-trust-platform"
-      path: "/domain/cloud-security/solutions/zero-trust-platform"
-      file: "solution.md"
-      parent_id: "DOM-cloud-security"
-    feature:
-      entity_id: "FEAT-threat-detection"
-      slug: "threat-detection"
-      path: "/domain/cloud-security/solutions/zero-trust-platform/features/threat-detection"
-      file: "feature.md"
-      parent_id: "SOL-zero-trust-platform"
-
-  scoped_relationships:
-    - "Feature scoped to zero-trust-platform solution"
-    - "Solution scoped to cloud-security domain"
+  available_operations:
+    - "semops meeting analyze"
+    - "semops meeting analyze --prompt extract_decisions"
+    - "semops meeting analyze --prompt extract_actions"
+    - "semops decision list --related-to MTG-2026-02-15-governance-review"
 ```
 
 ## CLI Command Examples
 
-Generic commands work with any entity type defined in configuration:
-
 ```bash
-# Standard entity types (unchanged from v1)
-semops domain list
-semops problem get PROB-compliance-challenges
-semops persona create --name "Security Manager"
+# List all decisions
+semops decision list
 
-# New entity types (automatically available)
-semops solution list                    # Lists solutions in current context
-semops feature create --name "Real-time Monitoring"
-semops research get RES-market-analysis-2024
+# List decisions that belong to a domain
+semops decision list --related-to DOM-cloud-governance --relationship part_of
 
-# Market segments
-semops market-segment list              # Auto-generated command
-semops market-segment create --name "Small Business"
+# List decisions made in a specific meeting
+semops decision list --related-to MTG-2026-02-15-governance-review --relationship made_in
 
-# Cross-cutting entities
-semops integration list                 # Lists all integrations
-semops strategy analyze STRAT-go-to-market
+# Create a new decision (uses decision.md.j2 create template)
+semops decision create --name "Adopt Zero Trust Model"
+
+# Run a named prompt from the decision template bundle
+semops decision analyze --id DEC-adopt-zero-trust-model --prompt extract_rationale
+
+# Show what relationship types are available
+semops config relationship-types list
+
+# Show all entity types and their namespaces
+semops config entity-types list
 ```
 
-## Template Variable Context
+## Third-Party Entity Types
 
-Each entity type automatically receives appropriate context variables:
+Third-party entity types install alongside built-ins with their own namespace. The directory structure is identical:
 
-### Solution Template Variables
+```
+my-ops-workspace/
+├── domain/                              # semops.core/domain (built-in)
+├── decisions/                           # semops.core/decision (built-in)
+└── governance-reviews/                  # com.acme.governance/governance-review (third-party)
+    └── q1-2026-review/
+        └── governance-review.md
+```
+
 ```yaml
-# Available in solution.md.j2 template:
-{
-  "entity_type": "solution",
-  "solution_id": "SOL-ai-threat-detection",
-  "solution_name": "AI Threat Detection",
-  "solution_slug": "ai-threat-detection",
-  "product_id": "PROD-zero-trust-platform",  # Parent context
-  "domain_id": "DOM-cloud-security",         # Ancestor context
-  "template_id": "TEMPLATE-solution",
-  "template_version": "1.0.0"
-}
+# governance-review.md
+---
+entity_type: "com.acme.governance/governance-review"
+entity_id: "GRV-q1-2026-review"
+namespace: "com.acme.governance"
+...
+---
 ```
 
-### Feature Template Variables
-```yaml
-# Available in feature.md.j2 template:
-{
-  "entity_type": "feature",
-  "feature_id": "FEAT-real-time-monitoring",
-  "feature_name": "Real-time Monitoring",
-  "solution_id": "SOL-ai-threat-detection",  # Parent
-  "product_id": "PROD-zero-trust-platform",  # Grandparent
-  "domain_id": "DOM-cloud-security"          # Root
-}
-```
-
-## Benefits of Generic Structure
-
-### For File Organization
-- **Predictable Layouts**: Same patterns across all entity types
-- **Scalable Hierarchies**: Support for deep nesting and complex relationships
-- **Flexible Grouping**: Multiple organizational approaches (segment-based, problem-based)
-- **Cross-Cutting Concerns**: Integration points and research artifacts
-
-### For Context Detection
-- **Automatic Resolution**: Context detected from directory structure
-- **Hierarchical Awareness**: Understanding of parent-child relationships
-- **Multiple Ancestors**: Access to full entity hierarchy
-- **Flexible Navigation**: Works with any entity type configuration
-
-### For CLI Operations
-- **Consistent Patterns**: Same commands work for all entity types
-- **Context-Aware Defaults**: Auto-detection of IDs and relationships
-- **Extensible Commands**: New entity types get full CLI support automatically
-- **Hierarchical Operations**: Commands understand entity relationships
-
-This generic approach maintains all the organizational benefits of the current system while providing unlimited extensibility for new entity types and relationship patterns.
+The `ConfigManager` keeps `semops.core/decision` and `com.acme.governance/governance-review` in separate namespace entries — no collision regardless of prefix overlap.

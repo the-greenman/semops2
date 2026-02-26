@@ -1,0 +1,26 @@
+# Core & gRPC
+protobuf>=4.25.0
+grpcio>=1.60.0
+grpcio-tools>=1.60.0
+protovalidate>=0.3.0
+
+# CLI Framework
+typer[all]>=0.9.0
+
+# Templating & Configuration
+Jinja2>=3.1.0
+PyYAML>=6.0.0
+
+# Utilities
+python-slugify>=8.0.0
+
+# Web Content Extraction (lightweight)
+beautifulsoup4>=4.12.0
+requests>=2.31.0
+lxml>=4.9.0
+
+# Async HTTP
+httpx>=0.25.0
+
+# Testing (devcontainer convenience)
+pytest>=7.0.0

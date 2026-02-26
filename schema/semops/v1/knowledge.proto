@@ -188,8 +188,11 @@ message KnowledgeSource {
   // Source-specific configuration
   google.protobuf.Struct config = 5;
 
-  // Associated domain
-  EntityID domain_id = 6;
+  // Entities this source is associated with.
+  // A source may attach to any entity type (domain, meeting, decision, etc.),
+  // not just a single domain. Source inheritance and propagation follow the
+  // share_sources rules defined on relationship_types in entity_types.yaml.
+  repeated EntityID entity_ids = 6;
 
   // Processing status
   ProcessingStatus processing_status = 7;
@@ -272,15 +275,12 @@ message RetrievalRequest {
   // Optional expert type for expert-specific retrieval
   string expert_type = 3;
 
-  // RAG workflow to use
-  string workflow = 4 [(buf.validate.field).string = {
-    in: [
-      "basic_semantic",
-      "hybrid_search",
-      "graph_enhanced",
-      "multimodal_search"
-    ]
-  }];
+  // RAG workflow key, defined in rag_workflows.yaml config.
+  // Open string — valid values are determined at runtime by the loaded
+  // configuration, not hardcoded here. The KnowledgeService rejects unknown
+  // keys with a structured error. Built-in examples: "basic_semantic",
+  // "hybrid_search", "graph_enhanced", "entity_graph_traversal".
+  string workflow = 4 [(buf.validate.field).string.min_len = 1];
 
   // Maximum number of results
   int32 max_results = 5 [(buf.validate.field).int32 = {
@@ -390,8 +390,8 @@ message AddSourceRequest {
   // Source configuration (URL, credentials, etc.)
   google.protobuf.Struct source_config = 2;
 
-  // Domain to associate with
-  EntityID domain_id = 3;
+  // Entities to associate this source with (domain, meeting, decision, etc.)
+  repeated EntityID entity_ids = 3;
 
   // Processing priority (1-10, 10=highest)
   int32 priority = 4 [(buf.validate.field).int32 = {
@@ -450,15 +450,12 @@ message SearchRequest {
   // Search query
   string query = 1 [(buf.validate.field).string.min_len = 1];
 
-  // Search strategy
-  string strategy = 2 [(buf.validate.field).string = {
-    in: [
-      "vector",
-      "graph",
-      "hybrid",
-      "multimodal"
-    ]
-  }];
+  // Search strategy key, defined in storage_backends.yaml config.
+  // Open string — valid values are determined at runtime by the loaded
+  // configuration. The KnowledgeService rejects unknown keys with a structured
+  // error. Built-in examples: "vector", "knowledge_graph",
+  // "entity_graph", "hybrid", "multimodal".
+  string strategy = 2 [(buf.validate.field).string.min_len = 1];
 
   // Source types to search
   repeated SourceType source_types = 3;
@@ -487,8 +484,9 @@ message SearchResponse {
 
 // Request to list knowledge sources
 message ListSourcesRequest {
-  // Domain to filter by
-  EntityID domain_id = 1;
+  // Filter to sources associated with a specific entity (any type).
+  // If unset, lists all sources in the workspace.
+  EntityID entity_id = 1;
 
   // Source types to include
   repeated SourceType source_types = 2;

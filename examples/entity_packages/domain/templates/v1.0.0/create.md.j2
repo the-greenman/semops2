@@ -1,0 +1,79 @@
+# {{domain_name}}
+
+**Entity Type**: Domain
+**ID**: {{entity_id}}
+**Status**: {{status | default("active")}}
+**Authority Level**: {{authority_level | default("MEDIUM")}}
+
+## Purpose
+
+{{purpose | default("_Purpose to be defined_")}}
+
+## Scope
+
+### In Scope
+
+{% if scope_included %}
+{% for item in scope_included %}
+- {{item}}
+{% endfor %}
+{% else %}
+_Scope to be defined through domain definition journey_
+{% endif %}
+
+### Out of Scope
+
+{% if scope_excluded %}
+{% for item in scope_excluded %}
+- {{item}}
+{% endfor %}
+{% else %}
+_Exclusions to be defined_
+{% endif %}
+
+## Related Domains
+
+{% if related_domains and related_domains | length > 0 %}
+{% for domain in related_domains %}
+- [[{{domain}}]] - _Relationship to be defined_
+{% endfor %}
+{% else %}
+_No related domains identified yet_
+{% endif %}
+
+## Stakeholders
+
+### Accountable
+
+{% if primary_stakeholders and primary_stakeholders | length > 0 %}
+{% for stakeholder in primary_stakeholders %}
+- [[{{stakeholder.role_id}}]] - {{stakeholder.name}} ({{stakeholder.capacity | default("Lead")}})
+{% endfor %}
+{% else %}
+_Stakeholders to be assigned_
+{% endif %}
+
+## Resources
+
+{% if resources %}
+### Documentation
+{% for resource in resources %}
+- {{resource.name}}: {{resource.url}}
+{% endfor %}
+{% else %}
+_Resources to be identified through domain definition journey_
+{% endif %}
+
+## Metadata
+
+- **Created**: {{created_date | default("{{now}}")}}
+- **Last Updated**: {{updated_date | default("{{now}}")}}
+- **Template Version**: {{template_version | default("1.0.0")}}
+
+{% if gaps and gaps | length > 0 %}
+## Identified Gaps
+
+{% for gap in gaps %}
+- {{gap}}
+{% endfor %}
+{% endif %}

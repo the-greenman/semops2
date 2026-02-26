@@ -1,0 +1,61 @@
+# Decision Entity Template Migration Rules
+
+current_version: "1.0.0"
+
+# Migration paths
+migrations:
+  # No migrations yet - this is v1.0.0
+
+# Migration strategy definitions
+strategies:
+
+  automated:
+    description: "Direct field mapping with no human review"
+    requires_approval: false
+    workflow:
+      - action: "backup_entity"
+      - action: "apply_field_mappings"
+      - action: "validate_new_format"
+      - action: "commit_changes"
+
+  llm_assisted:
+    description: "AI infers new fields from context"
+    requires_approval: false
+    workflow:
+      - action: "backup_entity"
+      - action: "load_entity_context"
+      - action: "llm_infer_fields"
+      - action: "apply_new_template"
+      - action: "validate_migration"
+      - action: "commit_changes"
+
+  llm_assisted_with_review:
+    description: "AI infers fields, human reviews before committing"
+    requires_approval: true
+    workflow:
+      - action: "backup_entity"
+      - action: "load_entity_context"
+      - action: "llm_infer_fields"
+      - action: "generate_migration_preview"
+      - action: "human_review"
+        pause_for_review: true
+      - action: "apply_new_template"
+      - action: "commit_changes"
+
+  manual:
+    description: "Complex changes requiring human work"
+    requires_approval: true
+    workflow:
+      - action: "backup_entity"
+      - action: "generate_migration_guide"
+      - action: "human_manual_edit"
+        pause_for_edit: true
+      - action: "validate_new_format"
+      - action: "commit_changes"
+
+# Rollback configuration
+rollback:
+  enabled: true
+  backup_location: ".semops/backups/migrations"
+  retention_policy: "90_days"
+  restore_relationships: true

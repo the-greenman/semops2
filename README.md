@@ -1,101 +1,100 @@
-# SemOps2 - Next-Generation Generic Semantic Operations
+# SemOps2 - Generic Semantic Operations Platform
 
-SemOps2 is a complete architectural reimagining of the semantic operations platform, built around generic, configuration-driven entity management instead of hardcoded entity-specific services.
+SemOps2 is a configuration-driven semantic operations platform. Any entity type — and the prompts, templates, and relationships that go with it — can be defined through YAML configuration without code changes.
 
 ## Vision
 
-Replace the rigid `DomainService`, `ProblemService`, `PersonaService` architecture with a flexible system where any entity type can be defined through configuration files and templates, without requiring code changes.
+A single `EntityService` handles all entity types. Entity types, their templates and prompt bundles, and the typed relationships between them are all defined in configuration. Third-party contributions are namespaced to prevent collisions.
 
-## Key Innovations
+The initial built-in entity set is designed for **operations**: domains, roles, meetings, decisions, conversations, and artefacts.
 
-### 🔧 Configuration-Driven Entity Types
-Define unlimited entity types through YAML configuration:
+## Key Design Decisions
+
+### Namespaced Entity Types
+Every entity type belongs to a namespace (reverse-DNS). This allows multiple contributors to define a `decision` type without collision:
+
 ```yaml
 entity_types:
-  solution:
-    id_prefix: "SOL"
-    template: "solution.md.j2"
-    parent_entity: "product"
-    # ... configuration defines everything
+  decision:
+    namespace: "semops.core"       # built-in
+    id_prefix: "DEC"
+    ...
+
+  decision:
+    namespace: "com.acme.governance"   # third-party, no collision
+    id_prefix: "DEC"
+    ...
 ```
 
-### 🚀 Generic Service Layer
-Single `EntityService` handles all entity types:
+The fully-qualified type key `semops.core/decision` is unambiguous everywhere.
+
+### Template Bundles per Entity Type
+Each entity type declares a bundle of templates and prompts — not just one template:
+
+```yaml
+decision:
+  namespace: "semops.core"
+  template_bundle:
+    create: "decision.md.j2"
+    analyze: "decision-analysis.md.j2"
+    prompts:
+      summarize: "prompts/decision-summarize.txt"
+      extract_rationale: "prompts/decision-rationale.txt"
+```
+
+### Typed Relationships Between Entities
+Relationships are graph edges, not directory nesting. The config declares which types can relate and how:
+
+```yaml
+relationship_types:
+  made_in:
+    namespace: "semops.core"
+    from_types: ["semops.core/decision"]
+    to_types: ["semops.core/meeting"]
+    cardinality: many_to_one
+```
+
+### Generic Service Layer
+One `EntityService` handles all types:
+
 ```python
-service = EntityService()
-service.list_entities("solution")  # Works for any entity type
-service.create_entity("solution", name="AI Assistant")
+service.list_entities("semops.core/decision")
+service.create_entity("semops.core/meeting", name="Governance Review 2026-02-15")
+service.get_entity_relationships("DEC-adopt-zero-trust", relationship_type="semops.core/made_in")
 ```
 
-### 🎯 Dynamic CLI Generation
-Commands auto-generated from configuration:
+### Dynamic CLI
+Commands are auto-generated from configuration:
+
 ```bash
-# Same patterns work for any configured entity type
-semops solution list
-semops solution create --name "New Solution"
-semops solution analyze
+semops decision list
+semops decision create --name "Adopt Zero Trust Model"
+semops meeting analyze --workflow extract_decisions
+semops role list --related-to DOM-cloud-governance
 ```
-
-### 📋 Template-First Design
-All entities use Jinja2 templates with consistent patterns:
-- YAML frontmatter for metadata
-- Standardized variable substitution
-- Extensible field definitions
-
-## Architecture Overview
-
-```
-semops2/
-├── src/core/           # Generic entity operations
-├── models/             # Entity type and context models
-├── cli/                # Dynamic command generation
-├── config/             # Entity type definitions and templates
-└── tests/              # Comprehensive test suite
-```
-
-## Benefits Over SemOps v1
-
-- **Unlimited Entity Types** - Add new types through configuration, not code
-- **Single Service Class** - No more entity-specific service duplication
-- **Consistent CLI** - Same command patterns across all entity types
-- **Easier Maintenance** - Less code, more configuration
-- **Rapid Prototyping** - Quick experimentation with new entity structures
 
 ## Architecture Approach
 
-SemOps2 uses a **protobuf-first approach** to eliminate interface drift and ensure perfect consistency across all access methods (CLI, REST API, GraphQL, MCP).
+Protobuf-first: all service contracts, message types, and validation rules are defined in `.proto` schemas and generated via `buf`. Hand-written code implements the contracts; it never defines its own types.
 
-- **Core Principles**
-  - All interfaces and data structures generated from authoritative protobuf schemas
-  - Single source of truth eliminates interface maintenance and drift
-  - Type-safe clients auto-generated for Python, TypeScript, Go
-  - Consistent ID formats enforced everywhere via protobuf validation
-  - Breaking change detection in CI/CD pipeline prevents contract violations
+```
+schema/semops/v1/     # Source of truth — proto schemas
+buf generate          # Produces Python gRPC, OpenAPI, docs
+src/                  # Hand-written implementations of generated contracts
+```
 
-- **Technology Stack**
-  - Interface Definition: Protobuf schemas with buf toolchain
-  - Code Generation: Python gRPC, OpenAPI, GraphQL, MCP tools
-  - Validation: Generated protobuf validators (no manual Pydantic)
-  - CLI: Auto-generated from protobuf service definitions
-  - Templates: Jinja2 with generated message type injection
-  - Storage: Local filesystem for entities; pluggable backends for knowledge
+See [ARCHITECTURE.md](ARCHITECTURE.md) for full design and [docs/IDL_ARCHITECTURE.md](docs/IDL_ARCHITECTURE.md) for the protobuf-first interface design.
 
 ## Current Status
 
-📋 **Planning Phase Complete** - Architecture design and protobuf-first approach validated.
+**Sprint 0 complete.** Protobuf schemas are defined and generating Python/gRPC/OpenAPI artifacts. gRPC server scaffold exists. No business logic implemented yet.
 
-🚧 **No Implementation Yet** - Ready to begin Sprint 0 foundation setup.
-
-See [TODO.md](TODO.md) for detailed implementation roadmap and [ARCHITECTURE.md](ARCHITECTURE.md) for complete design specifications.
+See [TODO.md](TODO.md) for the implementation roadmap.
 
 ## Next Steps
 
-1. **Sprint 0**: Set up project structure, protobuf toolchain, and development environment
-2. **Sprint 1**: Define protobuf schemas and generate all Python types and service stubs
-3. **Sprint 2**: Implement generic EntityService using generated contracts
-4. **Sprint 3**: Build dynamic CLI system and template engine
-5. **Sprint 4+**: Expert system integration and knowledge repository
-
----
-
-*This is an architectural planning repository. No implementation code exists yet.*
+1. Update `core.proto` — add `namespace` and `prefix` fields to `EntityID`
+2. Implement `ConfigManager` with namespace validation and type registry
+3. Implement `EntityService` CRUD backed by filesystem
+4. Write ops entity templates and prompt bundles
+5. Activate contract tests
